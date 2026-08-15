@@ -9,12 +9,12 @@ Do not change repository visibility until every required gate below is satisfied
 - [x] Android build configuration does not contain a project signing password.
 - [x] Private development relay configuration is excluded.
 - [x] Development-only update workflow is excluded.
-- [ ] Final secret/hostname scan passes on the complete tree.
+- [x] Final public-source security scan passes on the complete tree.
 
 ## Build and tests
 
 - [x] Android debug APK builds in GitHub Actions.
-- [ ] Self-host relay validation workflow passes.
+- [x] Self-host relay syntax + Wrangler dry-run validation passes in GitHub Actions.
 - [ ] Clean-account LAN onboarding tested on hardware.
 - [ ] Clean-account Remote onboarding tested on hardware/mobile data.
 - [ ] Android TV Accessibility fallback and Auto-start safety tested on target firmware.
@@ -28,11 +28,11 @@ Do not change repository visibility until every required gate below is satisfied
 
 ## Publication
 
-- [ ] Confirm no private relay/token/QR values are present.
-- [ ] Confirm no signing material is present.
+- [x] Confirm no private relay/token/QR values are present in the sanitized source tree.
+- [x] Confirm no signing material is present in the sanitized source tree.
 - [ ] Choose repository license.
 - [ ] Make `flud-companion` public.
 - [ ] Verify Deploy to Cloudflare from a logged-out/clean GitHub browser flow.
 - [ ] Tag the public beta/release only after the public repository and one-click deployment are verified.
 
-The historical `flud-remote` development repository should remain private.
+The historical development repository should remain private.
