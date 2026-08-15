@@ -4,7 +4,7 @@
 
 Flud Companion is an independent, unofficial companion project for controlling Flud on Android over LAN or a user-owned Remote relay. It is a personal alexlab.media project and is not affiliated with, endorsed by, or sponsored by Delphi Softwares or the developers of Flud. The name “Flud” is used only to identify compatibility.
 
-## Current version — 0.23
+## Current version — 0.24.0
 
 ### Quick setup
 
@@ -13,21 +13,22 @@ The Android Bridge supports:
 - **LAN only** — direct local control, no cloud required;
 - **LAN + Remote** — local control plus a user-owned self-hosted relay.
 
-v0.24 freezes the approved **premium minimal** Flud Companion interface and makes the exact Remote PWA linked-rings mark canonical across Android Bridge, Local LAN UI, Remote PWA, app icon, and Android TV banner.
+v0.24 freezes the approved **premium minimal** Flud Companion interface and keeps the linked-rings identity consistent across Android Bridge, Local LAN UI, Remote PWA, app icon and Android TV presentation.
 
-The three user-facing clients now include an in-app **How-to**, a remembered language selector for **English / Romanian / French / German**, and an optional **Offer me a beer** support action. Android Controls and Advanced actions use two-column grids to reduce TV scrolling.
+The three user-facing clients include an in-app **How-to**, a remembered language selector for **English / Romanian / French / German**, and an optional **Offer me a beer** support action. Android Controls and Advanced actions use two-column grids to reduce TV scrolling.
 
-The selected linked-rings mark is the primary visual identity. Android is reorganized around **Status → Controls → Pairing → Advanced**, while the phone UI uses a compact device status card, simplified magnet composer, Auto-start switch, premium primary action, recent-send list, and a quieter saved-pairing area.
+Android is organized around **Status → Controls → Pairing → Advanced**, while the phone UI uses a compact device status card, simplified magnet composer, Auto-start switch, primary send action, recent-send list and saved pairing.
 
 The functional LAN/Remote protocol remains unchanged.
 
-### Public beta candidate in 0.23
+### 0.24 release source
 
 - Android TV focus no longer scales controls outside their card bounds, avoiding clipped rounded corners on focused buttons.
-- Remote magnet sends automatically retry short-lived mobile/browser/relay transport failures.
+- Remote magnet sends retry short-lived mobile/browser/relay transport failures.
 - Retries are idempotent: the PWA reuses a request ID and the relay returns the already-accepted command instead of queueing a duplicate.
-- The Accessibility helper button falls back to the Android Settings home screen on TV firmware that exposes no usable Accessibility deep-link.
-- Release-prep checklists are included for clean-account onboarding, beta testing, security and public repository review.
+- The Accessibility helper has a safe Android Settings fallback on TV firmware that exposes no usable Accessibility deep-link.
+- The Web Companion is explicitly cross-platform on iPhone, Android, tablet and desktop.
+- The optional support reminder is browser-local and does not add telemetry.
 
 ### Release preparation
 
@@ -35,7 +36,7 @@ Chrome on iPhone is the primary day-to-day beta browser; Safari and Android Chro
 
 ### Remote relay onboarding
 
-The public target flow is:
+The target flow is:
 
 `Deploy to Cloudflare → Copy relay URL → enter it once in Bridge → scan Remote QR → done`
 
@@ -45,9 +46,9 @@ The relay root serves a setup landing page with:
 - exact relay URL;
 - **Copy relay URL**;
 - shortcut to the Remote PWA;
-- four short pairing steps.
+- short pairing steps.
 
-The self-host template declares its R2 mailbox with a default resource name so Cloudflare can provision it during the one-click deployment flow.
+The self-host template declares its R2 mailbox with a default resource name so Cloudflare can provision it during deployment.
 
 ### LAN
 
@@ -79,10 +80,10 @@ See `docs/quick-start.md`, `docs/relay-setup.md`, `docs/privacy.md`, `docs/troub
 
 ## Security
 
-Keep LAN tokens, Remote tokens, and pairing QR codes private. The relay stores only a SHA-256 hash of the Remote token.
+Keep LAN tokens, Remote tokens and pairing QR codes private. The relay stores only a SHA-256 hash of the Remote token.
 
 Use torrent/magnet content only where you have the right to download it.
 
 ## Support reminder
 
-After every 50 successful magnet sends in a given browser/origin, the Web Companion shows a small optional support reminder. The counter stays in local browser storage; it is not telemetry and is not sent to alexlab.media. LAN and Remote origins keep independent counters by browser security design.
+After every 50 successful magnet sends in a given browser/origin, the Web Companion can show a small optional support reminder. The counter stays in local browser storage; it is not telemetry and is not sent to alexlab.media. LAN and Remote origins keep independent counters by browser security design.
