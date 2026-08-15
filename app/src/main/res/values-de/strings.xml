@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Flud Companion</string>
+    <string name="autostart_accessibility_description">Optionaler Flud-Companion-Helfer, der nach einer ausdrücklichen LAN- oder Remote-Auto-start-Anforderung den Torrent-Hinzufügen-Bildschirm bestätigt. Er erkennt zuerst semantisch das Bestätigungselement in Flud und aktiviert es; Rechts, Rechts, OK wird nur als Fallback verwendet. In anderen Apps führt er keine Aktionen aus.</string>
+</resources>

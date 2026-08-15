@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Flud Companion</string>
+    <string name="autostart_accessibility_description">Helper opțional Flud Companion care confirmă ecranul de adăugare torrent după o cerere explicită de auto-start LAN sau Remote. Identifică mai întâi semantic controlul de confirmare din Flud și îl apasă; Dreapta, Dreapta, OK este folosit doar ca fallback. Nu acționează în alte aplicații.</string>
+</resources>
