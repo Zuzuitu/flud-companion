@@ -10,4 +10,4 @@ The project uses or integrates with:
 - Cloudflare Workers and R2 for the optional user-owned Remote relay;
 - standard browser/PWA APIs for LAN and Remote controllers.
 
-Third-party components remain subject to their own licenses and terms. The repository license for Flud Companion itself must be chosen before public release.
+Third-party components remain subject to their own licenses and terms. Flud Companion itself is licensed under the Apache License, Version 2.0 (`Apache-2.0`); see the repository `LICENSE` file.
