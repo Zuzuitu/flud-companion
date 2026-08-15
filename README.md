@@ -87,3 +87,7 @@ Use torrent/magnet content only where you have the right to download it.
 ## Support reminder
 
 After every 50 successful magnet sends in a given browser/origin, the Web Companion can show a small optional support reminder. The counter stays in local browser storage; it is not telemetry and is not sent to alexlab.media. LAN and Remote origins keep independent counters by browser security design.
+
+## License
+
+Flud Companion is licensed under the **Apache License, Version 2.0** (`Apache-2.0`). See `LICENSE` for the full terms.
