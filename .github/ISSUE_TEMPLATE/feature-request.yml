@@ -1,0 +1,50 @@
+name: Feature request
+
+description: Suggest an improvement for Flud Companion.
+title: "[Feature] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Flud Companion. Please describe the use case first, then the feature you have in mind.
+
+        Do not include pairing tokens, QR codes, passwords or private relay details.
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Android Bridge
+        - LAN Web Companion
+        - Remote Web Companion
+        - Cloudflare relay
+        - Pairing / onboarding
+        - Android TV / Accessibility
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: usecase
+    attributes:
+      label: What problem would this solve?
+      description: Explain the real-world use case.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Suggested solution
+      description: Describe how you would like Flud Companion to behave.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Optional — mention any workaround you use today.
