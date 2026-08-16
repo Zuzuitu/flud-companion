@@ -1,10 +1,30 @@
 # Flud Companion
 
-**Cross-platform controller:** use Flud Companion Web from **iPhone, Android, tablet, or desktop**. The only native APK is the Android Bridge installed on the device that runs Flud.
+**Remote control for Flud from iPhone, Android, tablet or desktop — including Flud running on Android TV / NVIDIA Shield.**
 
-Flud Companion is an independent, unofficial companion project for controlling Flud on Android over LAN or a user-owned Remote relay. It is a personal alexlab.media project and is not affiliated with, endorsed by, or sponsored by Delphi Softwares or the developers of Flud. The name “Flud” is used only to identify compatibility.
+[![Latest beta](https://img.shields.io/badge/release-v0.24.0--beta.1-blue)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.0-beta.1)
+[![Android](https://img.shields.io/badge/Android-6%2B-brightgreen)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.0-beta.1)
+[![License](https://img.shields.io/badge/license-Apache--2.0-lightgrey)](LICENSE)
 
-## Current version — 0.24.0
+**[Download the signed Android APK](https://github.com/Zuzuitu/flud-companion/releases/download/v0.24.0-beta.1/FludCompanion-0.24.0-beta.1.apk)** · [Release notes](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.0-beta.1) · [Quick start](docs/quick-start.md)
+
+Flud Companion adds a browser-based remote interface to **Flud / Flud+**. Install the small Android Bridge on the device that runs Flud, then control it from **iPhone, Android, tablet or desktop** over your home LAN or remotely over the internet.
+
+Typical use cases:
+
+- control **Flud on NVIDIA Shield / Android TV** from your phone;
+- send **magnet links to Flud from iPhone** or any modern browser;
+- use a lightweight **Flud web interface / remote control** on your local network;
+- control Flud away from home without exposing an inbound router port;
+- self-host Remote through your own **Cloudflare Worker + R2** account.
+
+No Tailscale or project-owned cloud account is required for Remote mode. Each user owns their own relay.
+
+> **Independent project:** Flud Companion is an unofficial alexlab.media companion project. It is not affiliated with, endorsed by, or sponsored by Delphi Softwares or the developers of Flud. The name “Flud” is used only to identify compatibility.
+
+## Current release — 0.24.0 Beta 1
+
+The public beta has been validated on real Android TV hardware with successful APK installation, LAN pairing, Remote pairing, mobile-data Remote use, magnet handoff to Flud and guarded Accessibility Auto-start.
 
 ### Quick setup
 
@@ -13,36 +33,41 @@ The Android Bridge supports:
 - **LAN only** — direct local control, no cloud required;
 - **LAN + Remote** — local control plus a user-owned self-hosted relay.
 
-v0.24 freezes the approved **premium minimal** Flud Companion interface and keeps the linked-rings identity consistent across Android Bridge, Local LAN UI, Remote PWA, app icon and Android TV presentation.
-
-The three user-facing clients include an in-app **How-to**, a remembered language selector for **English / Romanian / French / German**, and an optional **Offer me a beer** support action. Android Controls and Advanced actions use two-column grids to reduce TV scrolling.
-
-Android is organized around **Status → Controls → Pairing → Advanced**, while the phone UI uses a compact device status card, simplified magnet composer, Auto-start switch, primary send action, recent-send list and saved pairing.
-
-The functional LAN/Remote protocol remains unchanged.
-
-### 0.24 release source
-
-- Android TV focus no longer scales controls outside their card bounds, avoiding clipped rounded corners on focused buttons.
-- Remote magnet sends retry short-lived mobile/browser/relay transport failures.
-- Retries are idempotent: the PWA reuses a request ID and the relay returns the already-accepted command instead of queueing a duplicate.
-- The Accessibility helper has a safe Android Settings fallback on TV firmware that exposes no usable Accessibility deep-link.
-- The Web Companion is explicitly cross-platform on iPhone, Android, tablet and desktop.
-- The optional support reminder is browser-local and does not add telemetry.
-
-### Release source
-
-Chrome on iPhone is the primary day-to-day beta browser; Safari and Android Chrome remain compatibility smoke tests. This repository is the sanitized release-source repository. Signing material, private relay configuration and development-only artifacts must never be committed here.
-
-### Remote relay onboarding
-
-The target flow is:
+For Remote, the intended setup is:
 
 `Deploy to Cloudflare → Copy relay URL → enter it once in Bridge → scan Remote QR → done`
 
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Zuzuitu/flud-companion/tree/main/selfhost/relay)
 
-The relay root serves a setup landing page with:
+## What you get
+
+- Android / Android TV Bridge for Flud and Flud+ compatibility
+- Local controller at `http://<android-device-ip>:8765/app`
+- One-scan Local QR pairing
+- One-scan Remote QR pairing
+- Bring-your-own Cloudflare Worker + R2 relay
+- No inbound home-network port required
+- Remote PWA served by each user's own relay
+- Optional guarded Auto-start through Android Accessibility
+- English / Romanian / French / German UI
+- Recent-send history stored only in the browser
+- Optional browser-local support reminder; no project telemetry
+
+The interface uses the same linked-rings identity across Android Bridge, Local LAN UI, Remote PWA, app icon and Android TV presentation. Android is organized around **Status → Controls → Pairing → Advanced**, while the phone UI provides a compact device status card, magnet composer, Auto-start switch, primary send action, recent-send list and saved pairing.
+
+## Public architecture
+
+At home:
+
+`Phone browser → LAN Bridge → Flud`
+
+Remote:
+
+`Phone PWA → user's Cloudflare relay → outbound HTTPS polling → Android Bridge → Flud`
+
+## Remote relay
+
+The relay root provides:
 
 - Worker online status;
 - exact relay URL;
@@ -52,33 +77,19 @@ The relay root serves a setup landing page with:
 
 The self-host template declares its R2 mailbox with a default resource name so Cloudflare can provision it during deployment.
 
-### LAN
+## Documentation
 
-- Local Bridge API on port `8765`
-- Local web controller at `http://<android-device-ip>:8765/app`
-- One-scan Local QR pairing
-- Optional Auto-start download
-- Recent-send history stored only in the browser
+Start with:
 
-### Remote
-
-- Bring-your-own Cloudflare Worker + R2 relay
-- No inbound home-network port required
-- No Tailscale requirement
-- No project-owned domain or hosted account required
-- Remote PWA served by each user's own relay
-- One-scan Remote QR pairing
-- Optional Auto-start download
-
-## Public architecture
-
-`Phone PWA → user's relay → outbound HTTPS polling → Android Bridge → Flud`
-
-or at home:
-
-`Phone browser → LAN Bridge → Flud`
-
-See `docs/quick-start.md`, `docs/relay-setup.md`, `docs/privacy.md`, `docs/troubleshooting.md`, `docs/browser-support.md`, `docs/faq.md`, `docs/credits.md`, `docs/new-user-zero.md`, `docs/beta-test.md`, `docs/public-release-checklist.md`, `SECURITY.md`, and `selfhost/relay/README.md`.
+- [Quick start](docs/quick-start.md)
+- [Remote relay setup](docs/relay-setup.md)
+- [Zero-to-working new-user guide](docs/new-user-zero.md)
+- [Troubleshooting](docs/troubleshooting.md)
+- [Browser support](docs/browser-support.md)
+- [FAQ](docs/faq.md)
+- [Privacy](docs/privacy.md)
+- [Security policy](SECURITY.md)
+- [Credits](docs/credits.md)
 
 ## Security
 
