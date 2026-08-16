@@ -6,8 +6,6 @@ Remote is bring-your-own infrastructure: each user deploys their own Cloudflare 
 
 ## One-click deployment
 
-When this repository is public, the preferred setup is:
-
 [![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Zuzuitu/flud-companion/tree/main/selfhost/relay)
 
 Cloudflare reads `wrangler.jsonc`, provisions the R2 mailbox declared by the template, builds the Worker, and gives the user their own `*.workers.dev` URL.
@@ -22,8 +20,6 @@ After deployment:
 6. The Remote PWA opens already paired.
 
 A custom domain is optional.
-
-> Development note: Cloudflare Deploy buttons require a public GitHub/GitLab repository. While this project repository is private during release preparation, use the manual deployment flow below or an already configured personal relay.
 
 ## Manual deployment fallback
 
