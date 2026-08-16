@@ -1,6 +1,6 @@
 # Flud Companion
 
-**Remote control for Flud from iPhone, Android, tablet or desktop — including Flud running on Android TV / NVIDIA Shield.**
+**Remote control for Flud from iPhone, Android, tablet or desktop - including Flud running on Android TV / NVIDIA Shield.**
 
 [![Latest beta](https://img.shields.io/badge/release-v0.24.0--beta.1-blue)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.0-beta.1)
 [![Android](https://img.shields.io/badge/Android-6%2B-brightgreen)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.0-beta.1)
@@ -22,7 +22,7 @@ No Tailscale or project-owned cloud account is required for Remote mode. Each us
 
 > **Independent project:** Flud Companion is an unofficial alexlab.media companion project. It is not affiliated with, endorsed by, or sponsored by Delphi Softwares or the developers of Flud. The name “Flud” is used only to identify compatibility.
 
-## Current release — 0.24.0 Beta 1
+## Current release - 0.24.0 Beta 1
 
 The public beta has been validated on real Android TV hardware with successful APK installation, LAN pairing, Remote pairing, mobile-data Remote use, magnet handoff to Flud and guarded Accessibility Auto-start.
 
@@ -30,8 +30,8 @@ The public beta has been validated on real Android TV hardware with successful A
 
 The Android Bridge supports:
 
-- **LAN only** — direct local control, no cloud required;
-- **LAN + Remote** — local control plus a user-owned self-hosted relay.
+- **LAN only** - direct local control, no cloud required;
+- **LAN + Remote** - local control plus a user-owned self-hosted relay.
 
 For Remote, the intended setup is:
 
