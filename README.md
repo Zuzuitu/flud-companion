@@ -30,7 +30,7 @@ The functional LAN/Remote protocol remains unchanged.
 - The Web Companion is explicitly cross-platform on iPhone, Android, tablet and desktop.
 - The optional support reminder is browser-local and does not add telemetry.
 
-### Release preparation
+### Release source
 
 Chrome on iPhone is the primary day-to-day beta browser; Safari and Android Chrome remain compatibility smoke tests. This repository is the sanitized release-source repository. Signing material, private relay configuration and development-only artifacts must never be committed here.
 
@@ -39,6 +39,8 @@ Chrome on iPhone is the primary day-to-day beta browser; Safari and Android Chro
 The target flow is:
 
 `Deploy to Cloudflare → Copy relay URL → enter it once in Bridge → scan Remote QR → done`
+
+[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/Zuzuitu/flud-companion/tree/main/selfhost/relay)
 
 The relay root serves a setup landing page with:
 
