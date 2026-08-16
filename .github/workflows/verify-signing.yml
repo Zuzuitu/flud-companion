@@ -67,6 +67,7 @@ jobs:
           KEYSTORE="$RUNNER_TEMP/flud-companion-release.jks"
           EXPECTED_CERT_SHA256='c0bbc7472b10c74325039bbf83c9bc2f92e3ff869eaf49599ed67cd546bb5998'
           REPORT="$RUNNER_TEMP/signing-report.txt"
+          APKSIGNER_REPORT="$RUNNER_TEMP/apksigner-report.txt"
 
           test -s "$APK"
           test -s "$KEYSTORE"
@@ -74,8 +75,11 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -n "$APKSIGNER"
 
-          APK_OUTPUT="$("$APKSIGNER" verify --verbose --print-certs "$APK")"
-          APK_CERT_SHA256="$(printf '%s\n' "$APK_OUTPUT" | sed -nE 's/^Signer #[0-9]+ certificate SHA-256 digest:[[:space:]]*([0-9A-Fa-f:]+).*$/\1/p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+          "$APKSIGNER" verify --verbose --print-certs "$APK" > "$APKSIGNER_REPORT" 2>&1
+          cat "$APKSIGNER_REPORT"
+
+          APK_CERT_LINE="$(grep -i -m1 'certificate SHA-256 digest' "$APKSIGNER_REPORT" || true)"
+          APK_CERT_SHA256="$(printf '%s\n' "$APK_CERT_LINE" | tr -d ':' | grep -Eo '[0-9A-Fa-f]{64}' | head -n 1 | tr '[:upper:]' '[:lower:]' || true)"
 
           KEYSTORE_OUTPUT="$(keytool -list -v -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS")"
           KEYSTORE_CERT_SHA256="$(printf '%s\n' "$KEYSTORE_OUTPUT" | sed -nE 's/^[[:space:]]*SHA256:[[:space:]]*([0-9A-Fa-f:]+).*$/\1/p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
@@ -97,7 +101,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: FludCompanion-signing-report
-          path: ${{ runner.temp }}/signing-report.txt
+          path: |
+            ${{ runner.temp }}/signing-report.txt
+            ${{ runner.temp }}/apksigner-report.txt
           if-no-files-found: warn
 
       - name: Upload verified signed APK
