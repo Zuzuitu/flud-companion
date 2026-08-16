@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Flud Companion</string>
+    <string name="autostart_accessibility_description">Assistant facultatif Flud Companion qui confirme l’écran d’ajout de torrent après une demande explicite d’auto-start LAN ou Remote. Il identifie d’abord sémantiquement le contrôle de confirmation de Flud et l’active ; Droite, Droite, OK n’est utilisé qu’en secours. Il n’agit pas dans les autres applications.</string>
+</resources>

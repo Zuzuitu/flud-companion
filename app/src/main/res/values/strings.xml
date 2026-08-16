@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Flud Companion</string>
+    <string name="autostart_accessibility_description">Optional Flud Companion helper that confirms the add-torrent screen after an explicit LAN or Remote auto-start request. It first identifies and clicks Flud’s confirmation control semantically; Right, Right, OK is used only as a fallback. It does not act in other apps.</string>
+</resources>
