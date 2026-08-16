@@ -59,18 +59,40 @@ jobs:
         run: gradle :app:assembleRelease --stacktrace
 
       - name: Verify APK signature and signing identity
+        env:
+          STORE_PASSWORD: ${{ secrets.FLUD_SIGNING_STORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.FLUD_SIGNING_KEY_ALIAS }}
         run: |
           set -euo pipefail
           APK='app/build/outputs/apk/release/app-release.apk'
+          KEYSTORE="$RUNNER_TEMP/flud-companion-release.jks"
           EXPECTED_CERT_SHA256='c0bbc7472b10c74325039bbf83c9bc2f92e3ff869eaf49599ed67cd546bb5998'
+          APKSIGNER_REPORT="$RUNNER_TEMP/apksigner-report.txt"
+
           test -s "$APK"
+          test -s "$KEYSTORE"
+
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
           test -n "$APKSIGNER"
-          OUTPUT="$("$APKSIGNER" verify --verbose --print-certs "$APK")"
-          printf '%s\n' "$OUTPUT"
-          ACTUAL_CERT_SHA256="$(printf '%s\n' "$OUTPUT" | awk -F': ' '/Signer #1 certificate SHA-256 digest:/ {print tolower($2); exit}')"
-          test -n "$ACTUAL_CERT_SHA256"
-          test "$ACTUAL_CERT_SHA256" = "$EXPECTED_CERT_SHA256"
+
+          "$APKSIGNER" verify --verbose --print-certs "$APK" > "$APKSIGNER_REPORT" 2>&1
+          cat "$APKSIGNER_REPORT"
+
+          APK_CERT_LINE="$(grep -i -m1 'certificate SHA-256 digest' "$APKSIGNER_REPORT" || true)"
+          APK_CERT_SHA256="$(printf '%s\n' "$APK_CERT_LINE" | tr -d ':' | grep -Eo '[0-9A-Fa-f]{64}' | head -n 1 | tr '[:upper:]' '[:lower:]' || true)"
+
+          KEYSTORE_OUTPUT="$(keytool -list -v -keystore "$KEYSTORE" -storepass "$STORE_PASSWORD" -alias "$KEY_ALIAS")"
+          KEYSTORE_CERT_SHA256="$(printf '%s\n' "$KEYSTORE_OUTPUT" | sed -nE 's/^[[:space:]]*SHA256:[[:space:]]*([0-9A-Fa-f:]+).*$/\1/p' | head -n 1 | tr -d ':' | tr '[:upper:]' '[:lower:]')"
+
+          printf 'Expected certificate SHA-256: %s\n' "$EXPECTED_CERT_SHA256"
+          printf 'Keystore certificate SHA-256: %s\n' "$KEYSTORE_CERT_SHA256"
+          printf 'APK signer certificate SHA-256: %s\n' "$APK_CERT_SHA256"
+
+          test -n "$KEYSTORE_CERT_SHA256"
+          test -n "$APK_CERT_SHA256"
+          test "$KEYSTORE_CERT_SHA256" = "$EXPECTED_CERT_SHA256"
+          test "$APK_CERT_SHA256" = "$EXPECTED_CERT_SHA256"
+          test "$APK_CERT_SHA256" = "$KEYSTORE_CERT_SHA256"
 
       - name: Prepare release assets
         run: |
