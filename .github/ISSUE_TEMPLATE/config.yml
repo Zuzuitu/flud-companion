@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Troubleshooting
+    url: https://github.com/Zuzuitu/flud-companion/blob/main/docs/troubleshooting.md
+    about: Check common setup, LAN, Remote and pairing problems before opening a bug report.
+  - name: Security vulnerability
+    url: https://github.com/Zuzuitu/flud-companion/security/advisories/new
+    about: Report security-sensitive issues privately. Never post live tokens or pairing QR codes in a public issue.
