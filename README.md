@@ -89,6 +89,7 @@ Start with:
 - [FAQ](docs/faq.md)
 - [Privacy](docs/privacy.md)
 - [Security policy](SECURITY.md)
+- [Contributing](CONTRIBUTING.md)
 - [Credits](docs/credits.md)
 
 ## Security
