@@ -22,6 +22,14 @@ No Tailscale or project-owned cloud account is required for Remote mode. Each us
 
 > **Independent project:** Flud Companion is an unofficial alexlab.media companion project. It is not affiliated with, endorsed by, or sponsored by Delphi Softwares or the developers of Flud. The name “Flud” is used only to identify compatibility.
 
+## Preview
+
+<p align="center">
+  <img src="docs/screenshots/remote-pwa-preview.svg" alt="Flud Companion Remote PWA preview" width="420" />
+</p>
+
+Sanitized preview of the Remote PWA. No real Device ID, Remote token or pairing credentials are shown.
+
 ## Current release - 0.24.1 Beta 2
 
 Beta 2 has been validated on real NVIDIA Shield / Android TV hardware and iPhone. APK installation/update, LAN pairing, Remote pairing, mobile-data Remote use, magnet handoff, slow Flud cold-start recovery and iPhone Add to Home Screen pairing persistence were tested successfully.
