@@ -1,5 +1,6 @@
 name: Verify release signing
 
+# Re-run permanent signing verification for the current 0.24.1 Beta 2 test build.
 on:
   push:
     branches: [ main ]
