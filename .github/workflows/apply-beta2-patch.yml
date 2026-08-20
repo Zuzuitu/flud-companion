@@ -5,6 +5,7 @@ on:
     branches: [ main ]
     paths:
       - 'scripts/apply-beta2-patch.py'
+      - 'scripts/beta2-trigger.txt'
 
 permissions:
   contents: write
