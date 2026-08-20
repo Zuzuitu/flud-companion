@@ -65,7 +65,7 @@ jobs:
           npm install --ignore-scripts --no-audit --no-fund
           npx wrangler deploy --dry-run --outdir dist
 
-      - name: Commit validated patch
+      - name: Commit validated product patch
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
@@ -79,10 +79,9 @@ jobs:
             selfhost/relay/src/index.js \
             selfhost/relay/package.json \
             CHANGELOG.md \
-            docs/releases/v0.24.1-beta.2.md \
-            .github/workflows/release-beta.yml
+            docs/releases/v0.24.1-beta.2.md
           if git diff --cached --quiet; then
-            echo 'No patch changes to commit.'
+            echo 'No product patch changes to commit.'
             exit 0
           fi
           git commit -m 'Fix PWA pairing and cold-start magnet handoff'
