@@ -9,6 +9,8 @@ object FludLauncher {
     const val FREE_PACKAGE = "com.delphicoder.flud"
     const val PAID_PACKAGE = "com.delphicoder.flud.paid"
     private val packages = listOf(FREE_PACKAGE, PAID_PACKAGE)
+    @Volatile private var lastMagnet: String? = null
+    @Volatile private var lastMagnetAt = 0L
 
     data class Result(
         val success: Boolean,
@@ -44,6 +46,8 @@ object FludLauncher {
                 val resolved = intent.resolveActivity(context.packageManager)
                 if (resolved != null) {
                     context.startActivity(intent)
+                    lastMagnet = magnet
+                    lastMagnetAt = System.currentTimeMillis()
                     return Result(true, pkg, "Magnet handed to Flud")
                 }
             } catch (_: ActivityNotFoundException) {
@@ -56,6 +60,13 @@ object FludLauncher {
         }
 
         return Result(false, message = "Flud or Flud+ was not found, or neither app accepts magnet URIs")
+    }
+
+    fun relaunchLastMagnet(context: Context, maxAgeMs: Long = 30_000L): Result? {
+        val magnet = lastMagnet ?: return null
+        val age = System.currentTimeMillis() - lastMagnetAt
+        if (age < 0L || age > maxAgeMs) return null
+        return launchMagnet(context, magnet)
     }
 
     fun openApp(context: Context): Result {
