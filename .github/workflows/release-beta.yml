@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'release/READY-v0.24.0-beta.1'
+      - 'release/READY-v0.24.1-beta.2'
   workflow_dispatch:
 
 permissions:
@@ -98,22 +98,22 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p dist
-          cp app/build/outputs/apk/release/app-release.apk dist/FludCompanion-0.24.0-beta.1.apk
-          (cd dist && sha256sum FludCompanion-0.24.0-beta.1.apk > FludCompanion-0.24.0-beta.1.apk.sha256)
+          cp app/build/outputs/apk/release/app-release.apk dist/FludCompanion-0.24.1-beta.2.apk
+          (cd dist && sha256sum FludCompanion-0.24.1-beta.2.apk > FludCompanion-0.24.1-beta.2.apk.sha256)
 
       - name: Upload signed APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: FludCompanion-0.24.0-beta.1-signed
+          name: FludCompanion-0.24.1-beta.2-signed
           path: |
-            dist/FludCompanion-0.24.0-beta.1.apk
-            dist/FludCompanion-0.24.0-beta.1.apk.sha256
+            dist/FludCompanion-0.24.1-beta.2.apk
+            dist/FludCompanion-0.24.1-beta.2.apk.sha256
           if-no-files-found: error
 
       - name: Publish GitHub prerelease
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: v0.24.0-beta.1
+          TAG: v0.24.1-beta.2
         run: |
           set -euo pipefail
           if gh release view "$TAG" >/dev/null 2>&1; then
@@ -121,9 +121,9 @@ jobs:
             exit 0
           fi
           gh release create "$TAG" \
-            dist/FludCompanion-0.24.0-beta.1.apk \
-            dist/FludCompanion-0.24.0-beta.1.apk.sha256 \
+            dist/FludCompanion-0.24.1-beta.2.apk \
+            dist/FludCompanion-0.24.1-beta.2.apk.sha256 \
             --target "$GITHUB_SHA" \
-            --title 'Flud Companion 0.24.0 Beta 1' \
+            --title 'Flud Companion 0.24.1 Beta 2' \
             --prerelease \
-            --notes-file docs/releases/v0.24.0-beta.1.md
+            --notes-file docs/releases/v0.24.1-beta.2.md
