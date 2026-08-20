@@ -2,11 +2,11 @@
 
 **Remote control for Flud from iPhone, Android, tablet or desktop - including Flud running on Android TV / NVIDIA Shield.**
 
-[![Latest beta](https://img.shields.io/badge/release-v0.24.0--beta.1-blue)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.0-beta.1)
-[![Android](https://img.shields.io/badge/Android-6%2B-brightgreen)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.0-beta.1)
+[![Latest beta](https://img.shields.io/badge/release-v0.24.1--beta.2-blue)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.1-beta.2)
+[![Android](https://img.shields.io/badge/Android-6%2B-brightgreen)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.1-beta.2)
 [![License](https://img.shields.io/badge/license-Apache--2.0-lightgrey)](LICENSE)
 
-**[Download the signed Android APK](https://github.com/Zuzuitu/flud-companion/releases/download/v0.24.0-beta.1/FludCompanion-0.24.0-beta.1.apk)** · [Release notes](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.0-beta.1) · [Quick start](docs/quick-start.md)
+**[Download the signed Android APK](https://github.com/Zuzuitu/flud-companion/releases/download/v0.24.1-beta.2/FludCompanion-0.24.1-beta.2.apk)** · [Beta 2 release notes](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.1-beta.2) · [Quick start](docs/quick-start.md) · [Changelog](CHANGELOG.md)
 
 Flud Companion adds a browser-based remote interface to **Flud / Flud+**. Install the small Android Bridge on the device that runs Flud, then control it from **iPhone, Android, tablet or desktop** over your home LAN or remotely over the internet.
 
@@ -22,9 +22,21 @@ No Tailscale or project-owned cloud account is required for Remote mode. Each us
 
 > **Independent project:** Flud Companion is an unofficial alexlab.media companion project. It is not affiliated with, endorsed by, or sponsored by Delphi Softwares or the developers of Flud. The name “Flud” is used only to identify compatibility.
 
-## Current release - 0.24.0 Beta 1
+## Current release - 0.24.1 Beta 2
 
-The public beta has been validated on real Android TV hardware with successful APK installation, LAN pairing, Remote pairing, mobile-data Remote use, magnet handoff to Flud and guarded Accessibility Auto-start.
+Beta 2 has been validated on real NVIDIA Shield / Android TV hardware and iPhone. APK installation/update, LAN pairing, Remote pairing, mobile-data Remote use, magnet handoff, slow Flud cold-start recovery and iPhone Add to Home Screen pairing persistence were tested successfully.
+
+### What's fixed in Beta 2
+
+- iPhone/iPad Remote pairing now survives **Add to Home Screen**.
+- Slow or frozen Flud cold starts get a longer guarded startup window before recovery.
+- Auto-start no longer runs the D-pad fallback on Flud's main screen.
+- The Accessibility helper detects the real **Add torrent** screen and can confirm the top-right add action.
+- If Flud opens the `.torrent` file picker by mistake, Companion backs out and performs at most one controlled magnet re-handoff.
+- The Android Bridge version label now follows the actual app build instead of being hard-coded.
+- The Remote PWA/service-worker cache was advanced so updated relay UI is not mistaken for an older build.
+
+See the [Beta 2 notes](docs/releases/v0.24.1-beta.2.md), [release history](docs/releases/README.md) and full [CHANGELOG](CHANGELOG.md).
 
 ### Quick setup
 
@@ -86,6 +98,8 @@ Start with:
 - [Zero-to-working new-user guide](docs/new-user-zero.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Browser support](docs/browser-support.md)
+- [Release history](docs/releases/README.md)
+- [Changelog](CHANGELOG.md)
 - [FAQ](docs/faq.md)
 - [Privacy](docs/privacy.md)
 - [Security policy](SECURITY.md)
