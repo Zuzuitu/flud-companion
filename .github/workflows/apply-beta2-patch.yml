@@ -44,6 +44,13 @@ jobs:
       - name: Build Android debug APK
         run: gradle :app:assembleDebug --stacktrace
 
+      - name: Upload Beta 2 test APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FludCompanion-0.24.1-beta.2-test
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
       - name: Set up Node.js 22
         uses: actions/setup-node@v4
         with:
@@ -62,7 +69,17 @@ jobs:
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add app selfhost CHANGELOG.md docs/releases .github/workflows/release-beta.yml
+          git add \
+            app/build.gradle.kts \
+            app/src/main/java/media/alexlab/fludremote/BridgeHttpServer.kt \
+            app/src/main/java/media/alexlab/fludremote/CloudRelayClient.kt \
+            app/src/main/java/media/alexlab/fludremote/FludLauncher.kt \
+            app/src/main/java/media/alexlab/fludremote/FludAutoStartService.kt \
+            selfhost/relay/src/index.js \
+            selfhost/relay/package.json \
+            CHANGELOG.md \
+            docs/releases/v0.24.1-beta.2.md \
+            .github/workflows/release-beta.yml
           if git diff --cached --quiet; then
             echo 'No patch changes to commit.'
             exit 0
