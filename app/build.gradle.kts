@@ -7,6 +7,10 @@ android {
     namespace = "media.alexlab.fludremote"
     compileSdk = 35
 
+    buildFeatures {
+        buildConfig = true
+    }
+
     defaultConfig {
         applicationId = "media.alexlab.fludremote"
         minSdk = 23
