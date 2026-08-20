@@ -1,1 +1,1 @@
-Retry clean Beta 2 patch after validated build and relay dry-run.
+Retry Beta 2 product patch after excluding release workflow from the Actions commit.
