@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   verify-signing:
@@ -113,3 +113,14 @@ jobs:
           name: FludCompanion-release-signing-verification
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
+
+      - name: Record successful run id
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          printf '%s\n' "$GITHUB_RUN_ID" > release/BETA2-SIGNING-TEST-RUN.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add release/BETA2-SIGNING-TEST-RUN.txt
+          git commit -m 'Record Beta 2 signing verification run'
+          git push origin HEAD:main
