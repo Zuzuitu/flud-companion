@@ -1,0 +1,99 @@
+name: Final screenshots upload
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'scripts/FINAL-SCREENSHOTS-UPLOAD-READY.txt'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: final-screenshots-upload
+  cancel-in-progress: false
+
+jobs:
+  upload:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Rebuild exact PNG screenshots
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          check_part() {
+            file="$1"
+            expected="$2"
+            actual="$(sha256sum "$file" | awk '{print $1}')"
+            test "$actual" = "$expected" || { echo "Chunk hash mismatch: $file"; exit 1; }
+          }
+
+          check_part .github/screenshot-upload/bridge.part.00 d00637811da32ae038ca56779bfa745e7f47c41c53326291f3e4d8e84a79afa8
+          check_part .github/screenshot-upload/bridge.part.01 830896f7a7ab55bc35cf25202138101f26f912b0e9dc75e967661e44888aa4b2
+          check_part .github/screenshot-upload/bridge.part.02 fa03c11ae2711ea1e3241f5e17ec07efc496732b35b7ec49b1a3c086bd237109
+          check_part .github/screenshot-upload/bridge.part.03 db9b9987544ff2351018ba109eecca243a8cc14a7980eb66cc7abafc886254c1
+          check_part .github/screenshot-upload/bridge.part.04 877c17e7b8542317c2f8760ccbabd8415acb2da1d05c67bbca42156a0c1aa3ca
+
+          check_part .github/screenshot-upload/pwa.part.00 a26d6597e868945ac5dd2de68557067f0dd3852c415c4cdfdb43f93e51e9ccd6
+          check_part .github/screenshot-upload/pwa.part.01 877ce1d8a90068c3fb483bf080dc827f9d8bccd19d831aa10b3c084d5ae55666
+          check_part .github/screenshot-upload/pwa.part.02 def75d4b0a69aadd95c0e8ad842561db453572e994529bdfd35ce06ca9920e9b
+          check_part .github/screenshot-upload/pwa.part.03 b43325d335103a8b41fa2e2490d14726ddc523fd5b7412a625f59365afb87772
+          check_part .github/screenshot-upload/pwa.part.04 4d1d8c9da9d47f6c32e9e7603f5bff64ddb1fe935669b667790d5bfe582c1c78
+          check_part .github/screenshot-upload/pwa.part.05 8dcbb52cf4146733e66c20e895dcf2449702735dd552a02e43f8d55580967e3c
+          check_part .github/screenshot-upload/pwa.part.06 671757d3bc639940abaefb936407e64c5dbdc9f0d8b58bc55bbc7e22b2bb54fe
+          check_part .github/screenshot-upload/pwa.part.07 cc310a837c2e8ec671092ab150d2df1c247e0b94c3be98699d5b7a6f9e37f344
+          check_part .github/screenshot-upload/pwa.part.08 4dba1df38492c9876eae2542a4b58d852d827516a47cccc882ef30d7eea38ae9
+          check_part .github/screenshot-upload/pwa.part.09 fc35ef7f2f244ff2ce8a8000e3e5df28daf3d9046533f58ee053965f82e2f083
+          check_part .github/screenshot-upload/pwa.part.10 e0673ec3419bd4d241b5a10b4c47f715933dc2cc5e7be4030616d7ba1d7ec61c
+          check_part .github/screenshot-upload/pwa.part.11 42f66b49ad9261b48e4802fe86da31e919f9581b1c12c4ed188f75c00db33299
+
+          mkdir -p docs/screenshots
+          cat .github/screenshot-upload/bridge.part.* | base64 --decode > docs/screenshots/android-bridge-shield.png
+          cat .github/screenshot-upload/pwa.part.* | base64 --decode > docs/screenshots/remote-pwa-preview.png
+
+          echo '445dd271359d220b40023d6569f7ddff8ed8187d741b1466199ed9a92f43f54e  docs/screenshots/android-bridge-shield.png' | sha256sum -c -
+          echo '144a041c29f84dc3dfbadd0fc09d8c28e222ae95235494c8f4984e12ad592dae  docs/screenshots/remote-pwa-preview.png' | sha256sum -c -
+
+          rm -rf .github/screenshot-upload
+          rm -f docs/screenshots/remote-pwa-preview.svg
+
+      - name: Update README preview
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('README.md')
+          s = p.read_text()
+          start = s.index('## Preview\n')
+          end = s.index('## Current release - 0.24.1 Beta 2\n')
+          replacement = '''## Preview
+
+          <table>
+            <tr>
+              <td align="center"><strong>Android Bridge - NVIDIA Shield / Android TV</strong></td>
+              <td align="center"><strong>Remote PWA</strong></td>
+            </tr>
+            <tr>
+              <td valign="top"><img src="docs/screenshots/android-bridge-shield.png" alt="Flud Companion Android Bridge on NVIDIA Shield" /></td>
+              <td valign="top"><img src="docs/screenshots/remote-pwa-preview.png" alt="Flud Companion Remote PWA" /></td>
+            </tr>
+          </table>
+
+          '''
+          replacement = '\n'.join(line.strip() if line.startswith('          ') else line for line in replacement.splitlines()) + '\n'
+          p.write_text(s[:start] + replacement + s[end:])
+
+      - name: Commit exact screenshots
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Use final Bridge and PWA screenshots"
+          git push origin HEAD:main
