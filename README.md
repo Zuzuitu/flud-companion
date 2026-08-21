@@ -24,11 +24,16 @@ No Tailscale or project-owned cloud account is required for Remote mode. Each us
 
 ## Preview
 
-<p align="center">
-  <img src="docs/screenshots/remote-pwa-preview.svg" alt="Flud Companion Remote PWA preview" width="420" />
-</p>
-
-Sanitized preview of the Remote PWA. No real Device ID, Remote token or pairing credentials are shown.
+<table>
+  <tr>
+    <td align="center"><strong>Android Bridge - NVIDIA Shield / Android TV</strong></td>
+    <td align="center"><strong>Remote PWA</strong></td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/screenshots/flud-companion-bridge-preview.png" alt="Flud Companion Android Bridge on NVIDIA Shield" /></td>
+    <td valign="top"><img src="docs/screenshots/flud-companion-pwa-preview.png" alt="Flud Companion Remote PWA" /></td>
+  </tr>
+</table>
 
 ## Current release - 0.24.1 Beta 2
 
