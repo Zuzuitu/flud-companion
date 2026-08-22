@@ -1,0 +1,52 @@
+name: Validate cold-start confirmation v4
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'scripts/fix-cold-start-confirmation-v4.py'
+
+permissions:
+  contents: write
+
+jobs:
+  patch-build-commit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Apply cold-start confirmation patch
+        run: python3 scripts/fix-cold-start-confirmation-v4.py
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle 8.9
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Build Android debug APK
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Upload debug validation APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FludCompanion-cold-start-v4-debug
+          path: app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+
+      - name: Commit validated fix
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add app/src/main/java/media/alexlab/fludremote/FludAutoStartService.kt app/src/main/res/xml/flud_autostart_accessibility.xml
+          git commit -m 'Harden cold-start torrent confirmation'
+          git push origin HEAD:main
