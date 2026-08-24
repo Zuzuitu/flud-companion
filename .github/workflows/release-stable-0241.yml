@@ -109,11 +109,22 @@ jobs:
           set -euo pipefail
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release $TAG already exists; leaving it unchanged."
-            exit 0
+          else
+            gh release create "$TAG" \
+              dist/FludCompanion-0.24.1.apk \
+              dist/FludCompanion-0.24.1.apk.sha256 \
+              --target "$GITHUB_SHA" \
+              --title 'Flud Companion 0.24.1' \
+              --notes-file docs/releases/v0.24.1.md
           fi
-          gh release create "$TAG" \
-            dist/FludCompanion-0.24.1.apk \
-            dist/FludCompanion-0.24.1.apk.sha256 \
-            --target "$GITHUB_SHA" \
-            --title 'Flud Companion 0.24.1' \
-            --notes-file docs/releases/v0.24.1.md
+          gh release view "$TAG" --json tagName,isPrerelease,isDraft --jq '.tagName + " prerelease=" + (.isPrerelease|tostring) + " draft=" + (.isDraft|tostring)'
+
+      - name: Record verified stable publication
+        run: |
+          set -euo pipefail
+          printf 'v0.24.1\nrun=%s\nsource=%s\n' "$GITHUB_RUN_ID" "$GITHUB_SHA" > release/STABLE-v0.24.1-PUBLISHED.txt
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add release/STABLE-v0.24.1-PUBLISHED.txt
+          git commit -m 'Record 0.24.1 stable publication'
+          git push origin HEAD:main
