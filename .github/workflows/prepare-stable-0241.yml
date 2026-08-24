@@ -4,8 +4,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'scripts/prepare-stable-0241.py'
-      - '.github/workflows/prepare-stable-0241.yml'
+      - 'release/PREPARE-STABLE-0241.txt'
 
 permissions:
   contents: write
