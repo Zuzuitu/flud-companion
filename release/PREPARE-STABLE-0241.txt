@@ -1,1 +1,0 @@
-Prepare and validate Flud Companion 0.24.1 stable - pass 2.
