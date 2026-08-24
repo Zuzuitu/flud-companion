@@ -35,12 +35,16 @@ s = s.replace(
     "$('clear').onclick=()=>{localStorage.removeItem(keys.hist);render()};$('pairingVisibility').onclick=()=>{const hidden=localStorage.getItem(keys.pairHidden)==='1';localStorage.setItem(keys.pairHidden,hidden?'0':'1');pairingVisibility()};"
 )
 
+if '.hidden{display:none!important}' not in s:
+    s = s.replace('.tiny{text-align:center', '.hidden{display:none!important}.tiny{text-align:center', 1)
+
 s = s.replace("const C='flud-companion-v0241';", "const C='flud-companion-v0241-stable';")
 
 if s == orig:
     raise SystemExit('No selfhost relay changes applied')
-if 'pairingVisibility' not in s or 'fludRemotePairingHiddenV1' not in s:
-    raise SystemExit('Pairing visibility patch incomplete')
+for needle in ('pairingVisibility', 'fludRemotePairingHiddenV1', '.hidden{display:none!important}'):
+    if needle not in s:
+        raise SystemExit('Pairing visibility patch incomplete: ' + needle)
 relay.write_text(s)
 
 g = gradle.read_text()
