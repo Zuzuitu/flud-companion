@@ -2,11 +2,11 @@
 
 **Remote control for Flud from iPhone, Android, tablet or desktop - including Flud running on Android TV / NVIDIA Shield.**
 
-[![Latest beta](https://img.shields.io/badge/release-v0.24.0--beta.1-blue)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.0-beta.1)
-[![Android](https://img.shields.io/badge/Android-6%2B-brightgreen)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.0-beta.1)
+[![Latest release](https://img.shields.io/badge/release-v0.24.1-blue)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.1)
+[![Android](https://img.shields.io/badge/Android-6%2B-brightgreen)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.1)
 [![License](https://img.shields.io/badge/license-Apache--2.0-lightgrey)](LICENSE)
 
-**[Download the signed Android APK](https://github.com/Zuzuitu/flud-companion/releases/download/v0.24.0-beta.1/FludCompanion-0.24.0-beta.1.apk)** · [Release notes](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.0-beta.1) · [Quick start](docs/quick-start.md)
+**[Download the signed Android APK](https://github.com/Zuzuitu/flud-companion/releases/download/v0.24.1/FludCompanion-0.24.1.apk)** · [0.24.1 release notes](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.1) · [Quick start](docs/quick-start.md) · [Changelog](CHANGELOG.md)
 
 Flud Companion adds a browser-based remote interface to **Flud / Flud+**. Install the small Android Bridge on the device that runs Flud, then control it from **iPhone, Android, tablet or desktop** over your home LAN or remotely over the internet.
 
@@ -22,9 +22,30 @@ No Tailscale or project-owned cloud account is required for Remote mode. Each us
 
 > **Independent project:** Flud Companion is an unofficial alexlab.media companion project. It is not affiliated with, endorsed by, or sponsored by Delphi Softwares or the developers of Flud. The name “Flud” is used only to identify compatibility.
 
-## Current release - 0.24.0 Beta 1
+## Preview
 
-The public beta has been validated on real Android TV hardware with successful APK installation, LAN pairing, Remote pairing, mobile-data Remote use, magnet handoff to Flud and guarded Accessibility Auto-start.
+<table>
+  <tr>
+    <td align="center"><strong>Android Bridge - NVIDIA Shield / Android TV</strong></td>
+    <td align="center"><strong>Remote PWA</strong></td>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/screenshots/flud-companion-bridge-preview.png" alt="Flud Companion Android Bridge on NVIDIA Shield" /></td>
+    <td valign="top"><img src="docs/screenshots/flud-companion-pwa-preview.png" alt="Flud Companion Remote PWA" /></td>
+  </tr>
+</table>
+
+## Current release - 0.24.1
+
+0.24.1 is the first stable release of Flud Companion. The Android Bridge and Remote PWA have been validated on real NVIDIA Shield / Android TV hardware and iPhone across LAN and Remote use.
+
+### What's new
+
+- Saved pairing in the Remote PWA can now be hidden and shown again without removing the pairing.
+- Small bug fixes and stability improvements.
+- Signed stable Android APK using the same permanent project signing identity as the beta releases.
+
+See the [0.24.1 notes](docs/releases/v0.24.1.md), [release history](docs/releases/README.md) and full [CHANGELOG](CHANGELOG.md).
 
 ### Quick setup
 
@@ -86,6 +107,8 @@ Start with:
 - [Zero-to-working new-user guide](docs/new-user-zero.md)
 - [Troubleshooting](docs/troubleshooting.md)
 - [Browser support](docs/browser-support.md)
+- [Release history](docs/releases/README.md)
+- [Changelog](CHANGELOG.md)
 - [FAQ](docs/faq.md)
 - [Privacy](docs/privacy.md)
 - [Security policy](SECURITY.md)
