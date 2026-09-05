@@ -36,17 +36,19 @@ import java.util.concurrent.atomic.AtomicBoolean
 class FludAutoStartService : AccessibilityService() {
     companion object {
         private const val REQUEST_WINDOW_MS = 120_000L
-        private const val REHANDOFF_GRACE_MS = 36_000L
-        private const val SECOND_REHANDOFF_GRACE_MS = 58_000L
-        private const val MAX_REHANDOFF_ATTEMPTS = 2
-        private const val CONFIRMATION_FALLBACK_GRACE_MS = 900L
-        private const val GESTURE_FALLBACK_GRACE_MS = 1_600L
-        private const val GESTURE_VERIFY_DELAY_MS = 650L
+        private const val MIN_REHANDOFF_ELAPSED_MS = 50_000L
+        private const val FORCE_REHANDOFF_ELAPSED_MS = 80_000L
+        private const val FLUD_QUIET_BEFORE_REHANDOFF_MS = 5_000L
+        private const val MAX_REHANDOFF_ATTEMPTS = 1
+        private const val CONFIRMATION_FALLBACK_GRACE_MS = 3_000L
+        private const val GESTURE_FALLBACK_GRACE_MS = 4_500L
+        private const val GESTURE_VERIFY_DELAY_MS = 900L
+        private const val CONFIRMATION_QUIET_MS = 2_500L
         private const val RETRY_DELAY_MS = 360L
         private const val CLICK_DELAY_MS = 190L
         private const val MAX_SCAN_NODES = 220
         private const val SEMANTIC_SCORE_THRESHOLD = 8
-        private const val STRATEGY = "semantic-v6+120s-cold-start+confirmation-latch+screen-gated-gesture"
+        private const val STRATEGY = "semantic-v7+quiet-gated-cold-start+strict-confirmation+navigation-lock"
 
         @Volatile private var pendingUntil = 0L
         @Volatile private var pendingSince = 0L
@@ -57,6 +59,7 @@ class FludAutoStartService : AccessibilityService() {
         @Volatile private var filePickerRecoveries = 0
         @Volatile private var confirmationSeenAt = 0L
         @Volatile private var rehandoffAttempts = 0
+        @Volatile private var lastFludEventAt = 0L
         private val attemptScheduled = AtomicBoolean(false)
         private val gestureFallbackInFlight = AtomicBoolean(false)
 
@@ -67,6 +70,7 @@ class FludAutoStartService : AccessibilityService() {
             filePickerRecoveries = 0
             confirmationSeenAt = 0L
             rehandoffAttempts = 0
+            lastFludEventAt = pendingSince
             gestureFallbackInFlight.set(false)
             lastStatus = "Armed - waiting for Flud magnet confirmation"
             lastDiagnostic = "Guarded semantic scan pending"
@@ -143,6 +147,7 @@ class FludAutoStartService : AccessibilityService() {
             filePickerRecoveries = 0
             confirmationSeenAt = 0L
             rehandoffAttempts = 0
+            lastFludEventAt = 0L
             gestureFallbackInFlight.set(false)
             lastStatus = status
             if (!diagnostic.isNullOrBlank()) lastDiagnostic = diagnostic
@@ -179,6 +184,9 @@ class FludAutoStartService : AccessibilityService() {
         val pkg = event?.packageName?.toString()
         val expected = pendingPackage
         if (!expected.isNullOrBlank() && !pkg.isNullOrBlank() && pkg != expected) return
+        if (!pkg.isNullOrBlank() && (expected.isNullOrBlank() || pkg == expected)) {
+            lastFludEventAt = System.currentTimeMillis()
+        }
         scheduleAttempt(220L)
     }
 
@@ -236,21 +244,11 @@ class FludAutoStartService : AccessibilityService() {
 
             if (filePickerRecoveries < 1) {
                 filePickerRecoveries += 1
-                lastStatus = "Wrong Flud file picker detected - returning to magnet flow"
-                lastDiagnostic = "Detected .torrent file picker before Add torrent; sent Back and scheduled one controlled magnet re-handoff"
+                lastStatus = "Wrong Flud file picker detected - returning to Flud and waiting for it to settle"
+                lastDiagnostic = "Detected .torrent file picker before Add torrent; sent Back once. Re-handoff is deferred until Flud is quiet."
                 try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { }
-                handler.postDelayed({
-                    if (!hasPendingRequest() || confirmationSeenAt > 0L) return@postDelayed
-                    val retry = FludLauncher.relaunchLastMagnet(this, REQUEST_WINDOW_MS)
-                    if (retry?.success == true) {
-                        retarget(retry.packageName)
-                        lastStatus = "Recovered from file picker - magnet handed to Flud again"
-                        lastDiagnostic = "Early file-picker recovery re-handoff completed before confirmation lock"
-                    } else {
-                        lastStatus = "File picker closed - waiting for Flud magnet screen"
-                    }
-                    scheduleAttempt(900L)
-                }, 2_500L)
+                lastFludEventAt = System.currentTimeMillis()
+                scheduleAttempt(900L)
             } else {
                 lastStatus = "Waiting for Flud magnet screen after file-picker recovery"
                 scheduleAttempt(RETRY_DELAY_MS)
@@ -287,24 +285,26 @@ class FludAutoStartService : AccessibilityService() {
             }
         }
 
-        val candidates = semanticCandidates(root)
-        lastDiagnostic = diagnosticSummary(candidates)
-        val best = candidates.firstOrNull { it.score >= SEMANTIC_SCORE_THRESHOLD }
-        if (best != null) {
-            val clicked = try {
-                best.clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-            } catch (_: Exception) {
-                false
+        if (confirmationScreen) {
+            val candidates = semanticCandidates(root)
+            lastDiagnostic = diagnosticSummary(candidates)
+            val best = candidates.firstOrNull { it.score >= SEMANTIC_SCORE_THRESHOLD }
+            if (best != null) {
+                val clicked = try {
+                    best.clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                } catch (_: Exception) {
+                    false
+                }
+                if (clicked) {
+                    val readable = best.label.ifBlank { best.viewId.ifBlank { best.className } }
+                    clear(
+                        "Auto-start completed semantically",
+                        "Clicked guarded confirmation: ${readable.take(120)} (score ${best.score})"
+                    )
+                    return
+                }
+                lastStatus = "Confirmation found; waiting for it to become clickable"
             }
-            if (clicked) {
-                val readable = best.label.ifBlank { best.viewId.ifBlank { best.className } }
-                clear(
-                    "Auto-start completed semantically",
-                    "Clicked guarded confirmation: ${readable.take(120)} (score ${best.score})"
-                )
-                return
-            }
-            lastStatus = "Confirmation found; waiting for it to become clickable"
         }
 
         if (!confirmationScreen) {
@@ -314,21 +314,25 @@ class FludAutoStartService : AccessibilityService() {
                 return
             }
             val elapsed = now - pendingSince
-            val nextRehandoffAt = if (rehandoffAttempts == 0) REHANDOFF_GRACE_MS else SECOND_REHANDOFF_GRACE_MS
-            if (elapsed >= nextRehandoffAt && rehandoffAttempts < MAX_REHANDOFF_ATTEMPTS) {
+            val quietFor = (now - lastFludEventAt).coerceAtLeast(0L)
+            val settledEnough = elapsed >= MIN_REHANDOFF_ELAPSED_MS && quietFor >= FLUD_QUIET_BEFORE_REHANDOFF_MS
+            val forceLateRetry = elapsed >= FORCE_REHANDOFF_ELAPSED_MS
+            if (rehandoffAttempts < MAX_REHANDOFF_ATTEMPTS && (settledEnough || forceLateRetry)) {
                 rehandoffAttempts += 1
                 val retry = FludLauncher.relaunchLastMagnet(this, REQUEST_WINDOW_MS)
                 if (retry?.success == true) {
                     retarget(retry.packageName)
-                    lastStatus = "Slow Flud start detected - staged magnet re-handoff ${rehandoffAttempts}/${MAX_REHANDOFF_ATTEMPTS}"
-                    lastDiagnostic = "No Add torrent screen after ${elapsed}ms; staged re-handoff ${rehandoffAttempts}/${MAX_REHANDOFF_ATTEMPTS}"
-                    scheduleAttempt(1_200L)
+                    lastFludEventAt = System.currentTimeMillis()
+                    lastStatus = "Flud settled - magnet handed to Flud again once"
+                    lastDiagnostic = "No Add torrent screen after ${elapsed}ms; quiet for ${quietFor}ms before the single guarded re-handoff"
+                    scheduleAttempt(1_500L)
                     return
                 }
             }
             lastStatus = when {
-                elapsed < REHANDOFF_GRACE_MS -> "Flud is still loading - waiting before cold-start recovery"
-                rehandoffAttempts < MAX_REHANDOFF_ATTEMPTS -> "Flud is still settling - waiting for the next guarded re-handoff"
+                elapsed < MIN_REHANDOFF_ELAPSED_MS -> "Flud is still loading its torrent list - waiting"
+                rehandoffAttempts < MAX_REHANDOFF_ATTEMPTS && quietFor < FLUD_QUIET_BEFORE_REHANDOFF_MS -> "Flud is still changing - waiting for the torrent list to settle"
+                rehandoffAttempts < MAX_REHANDOFF_ATTEMPTS -> "Waiting for a safe cold-start re-handoff"
                 else -> "Waiting for the real Flud Add torrent screen"
             }
             scheduleAttempt(RETRY_DELAY_MS)
@@ -336,13 +340,14 @@ class FludAutoStartService : AccessibilityService() {
         }
 
         val confirmationElapsed = now - confirmationSeenAt
-        if (confirmationElapsed < CONFIRMATION_FALLBACK_GRACE_MS) {
-            lastStatus = "Add torrent screen detected - waiting for confirmation control"
+        val confirmationQuietFor = (now - lastFludEventAt).coerceAtLeast(0L)
+        if (confirmationElapsed < CONFIRMATION_FALLBACK_GRACE_MS || confirmationQuietFor < CONFIRMATION_QUIET_MS) {
+            lastStatus = "Add torrent detected - waiting for metadata and controls to settle"
             scheduleAttempt(RETRY_DELAY_MS)
             return
         }
 
-        // D-pad fallback is now allowed ONLY after the real Add torrent screen is detected.
+        // D-pad/gesture fallback is allowed only after the real Add torrent screen is stable.
         attemptFocusFallback(root)
     }
 
@@ -448,16 +453,18 @@ class FludAutoStartService : AccessibilityService() {
         )
         val tabPairSeen = tabPairs.any { (left, right) -> summary.contains(left) && summary.contains(right) }
         val detailMarkers = listOf(
-            "storage path", "torrent settings", "hash", "name", "download path",
-            "percorso", "impostazioni torrent", "nome",
-            "cale stocare", "setari torrent", "nume",
-            "emplacement", "parametres torrent", "nom",
-            "speicher", "torrent einstellungen", "name"
+            "storage path", "torrent settings", "download path", "hash", "size",
+            "percorso", "impostazioni torrent", "dimensione",
+            "cale stocare", "setari torrent", "dimensiune",
+            "emplacement", "parametres torrent", "taille",
+            "speicher", "torrent einstellungen", "grosse"
         )
         val detailCount = detailMarkers.count { summary.contains(it) }
 
-        return (titleSeen && (tabPairSeen || detailCount >= 1)) ||
-            (tabPairSeen && detailCount >= 1)
+        // The main Flud screen may expose an Add torrent action while the torrent list is
+        // still loading. Never treat that as confirmation. The real magnet confirmation
+        // must expose the INFORMATION/FILES tab pair plus at least one torrent detail.
+        return tabPairSeen && detailCount >= 1
     }
 
     private fun confirmationActionCandidate(root: AccessibilityNodeInfo): Candidate? {
@@ -637,7 +644,9 @@ class FludAutoStartService : AccessibilityService() {
         if (!looksLikeMagnetConfirmation(screenSummary(root))) return false
 
         val seenAt = confirmationSeenAt
-        if (seenAt <= 0L || System.currentTimeMillis() - seenAt < GESTURE_FALLBACK_GRACE_MS) return false
+        val now = System.currentTimeMillis()
+        if (seenAt <= 0L || now - seenAt < GESTURE_FALLBACK_GRACE_MS) return false
+        if (now - lastFludEventAt < CONFIRMATION_QUIET_MS) return false
         if (!gestureFallbackInFlight.compareAndSet(false, true)) return true
 
         val bounds = Rect().also { root.getBoundsInScreen(it) }
