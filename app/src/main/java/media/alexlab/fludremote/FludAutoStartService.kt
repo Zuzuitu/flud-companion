@@ -3,12 +3,14 @@ package media.alexlab.fludremote
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.accessibilityservice.GestureDescription
+import android.content.ComponentName
 import android.content.Context
 import android.graphics.Path
 import android.graphics.Rect
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.View
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityManager
@@ -33,8 +35,10 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 class FludAutoStartService : AccessibilityService() {
     companion object {
-        private const val REQUEST_WINDOW_MS = 30_000L
-        private const val REHANDOFF_GRACE_MS = 10_500L
+        private const val REQUEST_WINDOW_MS = 120_000L
+        private const val REHANDOFF_GRACE_MS = 36_000L
+        private const val SECOND_REHANDOFF_GRACE_MS = 58_000L
+        private const val MAX_REHANDOFF_ATTEMPTS = 2
         private const val CONFIRMATION_FALLBACK_GRACE_MS = 900L
         private const val GESTURE_FALLBACK_GRACE_MS = 1_600L
         private const val GESTURE_VERIFY_DELAY_MS = 650L
@@ -42,7 +46,7 @@ class FludAutoStartService : AccessibilityService() {
         private const val CLICK_DELAY_MS = 190L
         private const val MAX_SCAN_NODES = 220
         private const val SEMANTIC_SCORE_THRESHOLD = 8
-        private const val STRATEGY = "semantic-v4+screen-gated-gesture+single-rehandoff"
+        private const val STRATEGY = "semantic-v5+120s-cold-start+screen-gated-gesture+staged-rehandoff"
 
         @Volatile private var pendingUntil = 0L
         @Volatile private var pendingSince = 0L
@@ -78,12 +82,54 @@ class FludAutoStartService : AccessibilityService() {
         }
 
         fun isEnabled(context: Context): Boolean {
+            if (activeService != null) return true
+
+            val expected = ComponentName(context, FludAutoStartService::class.java)
             val manager = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
-            return manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
-                .any {
-                    val info = it.resolveInfo?.serviceInfo
-                    info?.packageName == context.packageName && info.name == FludAutoStartService::class.java.name
-                }
+
+            val listed = try {
+                manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+                    .any { entry ->
+                        val info = entry.resolveInfo?.serviceInfo ?: return@any false
+                        val rawName = info.name.orEmpty()
+                        val fullName = when {
+                            rawName.startsWith(".") -> info.packageName + rawName
+                            rawName.contains('.') -> rawName
+                            rawName.isNotBlank() -> info.packageName + "." + rawName
+                            else -> ""
+                        }
+                        info.packageName == expected.packageName && fullName == expected.className
+                    }
+            } catch (_: Exception) {
+                false
+            }
+            if (listed) return true
+
+            // Android TV builds can keep the service enabled in Settings while the
+            // AccessibilityManager list is stale or reports a relative service name.
+            // Fall back to the authoritative secure setting used by the system UI.
+            return try {
+                val accessibilityOn = Settings.Secure.getInt(
+                    context.contentResolver,
+                    Settings.Secure.ACCESSIBILITY_ENABLED,
+                    0
+                ) == 1
+                if (!accessibilityOn) return false
+
+                val enabled = Settings.Secure.getString(
+                    context.contentResolver,
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+                ).orEmpty()
+
+                enabled.split(':')
+                    .mapNotNull { ComponentName.unflattenFromString(it.trim()) }
+                    .any { component ->
+                        component.packageName == expected.packageName &&
+                            component.className == expected.className
+                    }
+            } catch (_: Exception) {
+                false
+            }
         }
 
         fun status(): String = lastStatus
@@ -184,13 +230,15 @@ class FludAutoStartService : AccessibilityService() {
                 lastDiagnostic = "Detected .torrent file picker during auto-start; sent Back and scheduled one controlled magnet re-handoff"
                 try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { }
                 handler.postDelayed({
-                    if (!hasPendingRequest() || rehandoffAttempts >= 1) return@postDelayed
-                    rehandoffAttempts += 1
-                    val retry = FludLauncher.relaunchLastMagnet(this)
+                    if (!hasPendingRequest()) return@postDelayed
+                    // This early recovery retry does not consume the later staged cold-start
+                    // retries. On Shield a file picker may appear long before Flud has finished
+                    // loading its torrent list, so we still keep retries available at 36s/58s.
+                    val retry = FludLauncher.relaunchLastMagnet(this, REQUEST_WINDOW_MS)
                     if (retry?.success == true) {
                         retarget(retry.packageName)
-                        lastStatus = "Recovered from file picker - magnet handed to Flud again once"
-                        lastDiagnostic = "File-picker recovery used one controlled magnet re-handoff"
+                        lastStatus = "Recovered from file picker - magnet handed to Flud again"
+                        lastDiagnostic = "File-picker recovery sent one early re-handoff; staged cold-start retries remain available"
                     } else {
                         lastStatus = "File picker closed - waiting for Flud magnet screen"
                     }
@@ -248,21 +296,22 @@ class FludAutoStartService : AccessibilityService() {
 
         if (!confirmationScreen) {
             val elapsed = now - pendingSince
-            if (elapsed >= REHANDOFF_GRACE_MS && rehandoffAttempts < 1) {
+            val nextRehandoffAt = if (rehandoffAttempts == 0) REHANDOFF_GRACE_MS else SECOND_REHANDOFF_GRACE_MS
+            if (elapsed >= nextRehandoffAt && rehandoffAttempts < MAX_REHANDOFF_ATTEMPTS) {
                 rehandoffAttempts += 1
-                val retry = FludLauncher.relaunchLastMagnet(this)
+                val retry = FludLauncher.relaunchLastMagnet(this, REQUEST_WINDOW_MS)
                 if (retry?.success == true) {
                     retarget(retry.packageName)
-                    lastStatus = "Slow Flud start detected - magnet handed to Flud again once"
-                    lastDiagnostic = "No Add torrent screen after ${elapsed}ms; used one controlled magnet re-handoff"
-                    scheduleAttempt(900L)
+                    lastStatus = "Slow Flud start detected - staged magnet re-handoff ${rehandoffAttempts}/${MAX_REHANDOFF_ATTEMPTS}"
+                    lastDiagnostic = "No Add torrent screen after ${elapsed}ms; staged re-handoff ${rehandoffAttempts}/${MAX_REHANDOFF_ATTEMPTS}"
+                    scheduleAttempt(1_200L)
                     return
                 }
             }
-            lastStatus = if (elapsed < REHANDOFF_GRACE_MS) {
-                "Flud is still settling - waiting for the real Add torrent screen"
-            } else {
-                "Waiting for the real Flud Add torrent screen"
+            lastStatus = when {
+                elapsed < REHANDOFF_GRACE_MS -> "Flud is still loading - waiting before cold-start recovery"
+                rehandoffAttempts < MAX_REHANDOFF_ATTEMPTS -> "Flud is still settling - waiting for the next guarded re-handoff"
+                else -> "Waiting for the real Flud Add torrent screen"
             }
             scheduleAttempt(RETRY_DELAY_MS)
             return
