@@ -1,1 +1,0 @@
-Build signed auto-start v6 test APK.
