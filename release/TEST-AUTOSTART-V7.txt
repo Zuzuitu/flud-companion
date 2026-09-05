@@ -1,0 +1,1 @@
+Build signed auto-start v7 test APK.
