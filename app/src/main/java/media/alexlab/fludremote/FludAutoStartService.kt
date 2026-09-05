@@ -46,7 +46,7 @@ class FludAutoStartService : AccessibilityService() {
         private const val CLICK_DELAY_MS = 190L
         private const val MAX_SCAN_NODES = 220
         private const val SEMANTIC_SCORE_THRESHOLD = 8
-        private const val STRATEGY = "semantic-v5+120s-cold-start+screen-gated-gesture+staged-rehandoff"
+        private const val STRATEGY = "semantic-v6+120s-cold-start+confirmation-latch+screen-gated-gesture"
 
         @Volatile private var pendingUntil = 0L
         @Volatile private var pendingSince = 0L
@@ -224,21 +224,28 @@ class FludAutoStartService : AccessibilityService() {
 
         val screenText = screenSummary(root)
         if (looksLikeTorrentFilePicker(screenText)) {
+            // Once the real Add torrent screen has been observed, the request is navigation-locked.
+            // A late/stale retry must never press Back or hand the magnet to Flud again because that
+            // can reopen Add torrent and then kick the user out of the app flow.
+            if (confirmationSeenAt > 0L) {
+                lastStatus = "Late file picker ignored after Add torrent was already detected"
+                lastDiagnostic = "Navigation lock active - no Back and no re-handoff after confirmation"
+                scheduleAttempt(RETRY_DELAY_MS)
+                return
+            }
+
             if (filePickerRecoveries < 1) {
                 filePickerRecoveries += 1
                 lastStatus = "Wrong Flud file picker detected - returning to magnet flow"
-                lastDiagnostic = "Detected .torrent file picker during auto-start; sent Back and scheduled one controlled magnet re-handoff"
+                lastDiagnostic = "Detected .torrent file picker before Add torrent; sent Back and scheduled one controlled magnet re-handoff"
                 try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { }
                 handler.postDelayed({
-                    if (!hasPendingRequest()) return@postDelayed
-                    // This early recovery retry does not consume the later staged cold-start
-                    // retries. On Shield a file picker may appear long before Flud has finished
-                    // loading its torrent list, so we still keep retries available at 36s/58s.
+                    if (!hasPendingRequest() || confirmationSeenAt > 0L) return@postDelayed
                     val retry = FludLauncher.relaunchLastMagnet(this, REQUEST_WINDOW_MS)
                     if (retry?.success == true) {
                         retarget(retry.packageName)
                         lastStatus = "Recovered from file picker - magnet handed to Flud again"
-                        lastDiagnostic = "File-picker recovery sent one early re-handoff; staged cold-start retries remain available"
+                        lastDiagnostic = "Early file-picker recovery re-handoff completed before confirmation lock"
                     } else {
                         lastStatus = "File picker closed - waiting for Flud magnet screen"
                     }
@@ -253,7 +260,13 @@ class FludAutoStartService : AccessibilityService() {
 
         val now = System.currentTimeMillis()
         val confirmationScreen = looksLikeMagnetConfirmation(screenText)
-        if (confirmationScreen && confirmationSeenAt <= 0L) confirmationSeenAt = now
+        if (confirmationScreen && confirmationSeenAt <= 0L) {
+            confirmationSeenAt = now
+            // Navigation lock: from here on this request may only confirm the existing Add torrent
+            // screen. No more re-handoff and no Back recovery are allowed.
+            rehandoffAttempts = MAX_REHANDOFF_ATTEMPTS
+            lastDiagnostic = "Add torrent detected - navigation locked; only final confirmation is allowed"
+        }
 
         if (confirmationScreen) {
             val action = confirmationActionCandidate(root)
@@ -295,6 +308,11 @@ class FludAutoStartService : AccessibilityService() {
         }
 
         if (!confirmationScreen) {
+            if (confirmationSeenAt > 0L) {
+                lastStatus = "Add torrent was already detected - waiting without navigation retries"
+                scheduleAttempt(RETRY_DELAY_MS)
+                return
+            }
             val elapsed = now - pendingSince
             val nextRehandoffAt = if (rehandoffAttempts == 0) REHANDOFF_GRACE_MS else SECOND_REHANDOFF_GRACE_MS
             if (elapsed >= nextRehandoffAt && rehandoffAttempts < MAX_REHANDOFF_ATTEMPTS) {
@@ -594,12 +612,9 @@ class FludAutoStartService : AccessibilityService() {
                 return@postDelayed
             }
             if (looksLikeTorrentFilePicker(screenSummary(freshRoot))) {
-                lastStatus = "File picker appeared before OK — recovering"
-                if (filePickerRecoveries < 1) {
-                    filePickerRecoveries += 1
-                    try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { }
-                }
-                scheduleAttempt(750L)
+                lastStatus = "File picker appeared after Add torrent - navigation lock kept it untouched"
+                lastDiagnostic = "$lastDiagnostic | no Back after confirmation lock"
+                scheduleAttempt(RETRY_DELAY_MS)
                 return@postDelayed
             }
             val focusedNow = freshRoot?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
