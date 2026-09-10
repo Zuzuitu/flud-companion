@@ -17,7 +17,7 @@ class CloudRelayClient(context: Context) {
     data class Snapshot(val state: State, val detail: String)
 
     companion object {
-        private const val BRIDGE_VERSION = "0.24.1"
+        private const val BRIDGE_VERSION = "0.24.6"
         private const val POLL_SECONDS = 2L
         @Volatile private var currentState: State = State.STOPPED
         @Volatile private var currentDetail: String = "Not started"
@@ -107,13 +107,13 @@ class CloudRelayClient(context: Context) {
         val autoStart = command.optBoolean("autoStart", false)
         val validMagnet = magnet.startsWith("magnet:?", ignoreCase = true) && magnet.length <= 12_000
         val helperReady = validMagnet && autoStart && FludAutoStartService.isEnabled(appContext)
-        if (helperReady) FludAutoStartService.request(FludLauncher.installedPackage(appContext))
-        val result = if (validMagnet) FludLauncher.launchMagnet(appContext, magnet) else FludLauncher.Result(false, message = "Invalid magnet URI from relay")
-        if (helperReady) {
-            if (result.success) FludAutoStartService.retarget(result.packageName) else FludAutoStartService.cancel("Flud launch failed; auto-start cancelled")
+        val result = when {
+            !validMagnet -> FludLauncher.Result(false, message = "Invalid magnet URI from relay")
+            helperReady -> FludAutoStartCoordinator.submit(appContext, magnet)
+            else -> FludLauncher.launchMagnet(appContext, magnet)
         }
         val resultMessage = if (result.success && autoStart) {
-            if (helperReady) "${result.message}; guarded auto-start armed before Flud launch" else "${result.message}; auto-start requested but the Flud Companion accessibility helper is not enabled"
+            if (helperReady) result.message else "${result.message}; auto-start requested but the Flud Companion accessibility helper is not enabled"
         } else result.message
         BridgePreferences.recordLastCommand(appContext, "Remote: $resultMessage", result.success)
         postResult(base, deviceId, token, id, result.success, resultMessage, result.packageName)

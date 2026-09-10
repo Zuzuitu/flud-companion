@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.24.7 stable
+- Fix an Auto-start status bug where the Accessibility helper could be enabled in Android settings but still appear as OFF in Flud Companion.
+- Improve automatic download start reliability on slower Flud startups, especially with roughly 8-10 or more active torrents.
+- Auto-start now waits for Flud's real torrent list to become visible before handing over a magnet, while keeping the fast path when Flud is already ready.
+- Small stability improvements.
+
 ## 0.24.1 stable
 - Add a Hide / Unhide control for Saved pairing in the Remote PWA.
 - Small bug fixes and stability improvements.
