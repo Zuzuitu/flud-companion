@@ -8,9 +8,9 @@
     "AGENTS.md"
   ],
   "current_release": {
-    "version_name": "0.24.7",
-    "version_code": 38,
-    "tag": "v0.24.7",
+    "version_name": "0.24.8",
+    "version_code": 39,
+    "tag": "v0.24.8",
     "application_id": "media.alexlab.fludremote"
   },
   "hard_invariants": {
@@ -60,7 +60,5 @@
     ".github/workflows/public-source-scan.yml",
     ".github/workflows/verify-signing.yml"
   ],
-  "known_technical_debt": [
-    "In the published v0.24.7 snapshot, BridgeHttpServer.VERSION and CloudRelayClient.BRIDGE_VERSION report 0.24.6 while Android versionName is 0.24.7. Fix together in the next release; do not retag v0.24.7."
-  ]
+  "known_technical_debt": []
 }
