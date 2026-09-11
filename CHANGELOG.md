@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.24.8 stable
+- Align Android package, LAN Bridge and Remote Bridge version reporting on 0.24.8.
+- Keep the validated Auto-start v10 behavior from 0.24.7 unchanged.
+- No functional Auto-start or relay behavior changes.
+
 ## 0.24.7 stable
 - Fix an Auto-start status bug where the Accessibility helper could be enabled in Android settings but still appear as OFF in Flud Companion.
 - Improve automatic download start reliability on slower Flud startups, especially with roughly 8-10 or more active torrents.

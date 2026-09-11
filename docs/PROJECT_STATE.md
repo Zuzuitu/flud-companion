@@ -1,7 +1,7 @@
 # Flud Companion - Project State
 
 LAST_UPDATED: 2026-09-11
-STATUS: Stable public release 0.24.7. The public release source is the immutable tag `v0.24.7`; `main` may move forward with post-release maintenance and governance changes.
+STATUS: Stable public release 0.24.8. The public release source is the immutable tag `v0.24.8`; `main` may move forward with post-release maintenance and governance changes.
 
 This file is the canonical human-readable technical checkpoint for Flud Companion.
 
@@ -24,10 +24,10 @@ Repository truth overrides chat memory. Do not reconstruct current behavior from
 
 ## Current public release
 
-- Release: `0.24.7`
-- Tag: `v0.24.7`
-- Android `versionCode`: `38`
-- Android `versionName`: `0.24.7`
+- Release: `0.24.8`
+- Tag: `v0.24.8`
+- Android `versionCode`: `39`
+- Android `versionName`: `0.24.8`
 - Application ID: `media.alexlab.fludremote`
 - Minimum Android SDK: 23
 - Target Android SDK: 33
@@ -130,12 +130,14 @@ Workflows must not create bookkeeping commits on `main`. In particular, do not r
 
 ## Git history policy
 
-The public history was deliberately cleaned on 2026-09-11 into release-level snapshots. Before this project-state commit, the reachable history consisted of:
+The public history was deliberately cleaned on 2026-09-11 into release-level snapshots. Before the persistent-memory checkpoint, the cleaned reachable release history consisted of:
 
 - `0.24.0 Beta 1`
 - `0.24.1 Beta 2`
 - `0.24.1`
 - `0.24.7`
+
+The next release-level maintenance snapshot is `0.24.8`, which only aligns version reporting and preserves the validated 0.24.7 runtime behavior.
 
 All were attributed to `Zuzuitu`.
 
@@ -164,7 +166,7 @@ Real third-party human contributions must retain correct attribution. Do not fal
 
 ## Known technical debt
 
-The published `v0.24.7` snapshot has Android package version `0.24.7`, while `BridgeHttpServer.VERSION` and `CloudRelayClient.BRIDGE_VERSION` still report `0.24.6`. This is a metadata/version-reporting inconsistency, not a reason to mutate the published `v0.24.7` tag. Correct all version surfaces together in the next release.
+The 0.24.8 maintenance release resolves the previous internal version-reporting mismatch: Android package, LAN Bridge and Remote Bridge all report `0.24.8`.
 
 Some older comments inside `FludAutoStartService.kt` still mention earlier strategy generations. Runtime behavior and `STRATEGY` are authoritative; clean stale comments during a future normal source change without changing the validated safety behavior.
 

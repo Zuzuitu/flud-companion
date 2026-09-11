@@ -2,11 +2,11 @@
 
 **Remote control for Flud from iPhone, Android, tablet or desktop - including Flud running on Android TV / NVIDIA Shield.**
 
-[![Latest release](https://img.shields.io/badge/release-v0.24.7-blue)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.7)
-[![Android](https://img.shields.io/badge/Android-6%2B-brightgreen)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.7)
+[![Latest release](https://img.shields.io/badge/release-v0.24.8-blue)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.8)
+[![Android](https://img.shields.io/badge/Android-6%2B-brightgreen)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.8)
 [![License](https://img.shields.io/badge/license-Apache--2.0-lightgrey)](LICENSE)
 
-**[Download the signed Android APK](https://github.com/Zuzuitu/flud-companion/releases/download/v0.24.7/FludCompanion-0.24.7.apk)** · [0.24.7 release notes](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.7) · [Quick start](docs/quick-start.md) · [Changelog](CHANGELOG.md)
+**[Download the signed Android APK](https://github.com/Zuzuitu/flud-companion/releases/download/v0.24.8/FludCompanion-0.24.8.apk)** · [0.24.8 release notes](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.8) · [Quick start](docs/quick-start.md) · [Changelog](CHANGELOG.md)
 
 Flud Companion adds a browser-based remote interface to **Flud / Flud+**. Install the small Android Bridge on the device that runs Flud, then control it from **iPhone, Android, tablet or desktop** over your home LAN or remotely over the internet.
 
@@ -35,9 +35,9 @@ No Tailscale or project-owned cloud account is required for Remote mode. Each us
   </tr>
 </table>
 
-## Current release - 0.24.7
+## Current release - 0.24.8
 
-0.24.7 is a stable maintenance release focused on Auto-start reliability on Android / Android TV.
+0.24.8 is a metadata-consistency maintenance release built from the validated 0.24.7 behavior.
 
 ### What's new
 
@@ -46,7 +46,7 @@ No Tailscale or project-owned cloud account is required for Remote mode. Each us
 - Auto-start now waits for Flud's real torrent list to become visible before handing over a magnet, while keeping the fast path when Flud is already ready.
 - Small stability improvements.
 
-See the [0.24.7 notes](docs/releases/v0.24.7.md), [release history](docs/releases/README.md) and full [CHANGELOG](CHANGELOG.md).
+See the [0.24.7 notes](docs/releases/v0.24.8.md), [release history](docs/releases/README.md) and full [CHANGELOG](CHANGELOG.md).
 
 ### Quick setup
 

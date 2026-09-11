@@ -2,6 +2,18 @@
 
 This folder keeps the human-readable notes for Flud Companion public releases.
 
+## 0.24.8 stable
+
+Metadata-consistency maintenance release built from the validated 0.24.7 behavior.
+
+Highlights:
+
+- Android package, LAN Bridge and Remote Bridge now report the same 0.24.8 version.
+- Auto-start v10 torrent-list readiness and single-handoff behavior are unchanged.
+- No functional Auto-start or relay behavior changes.
+
+Full notes: [v0.24.8.md](v0.24.8.md)
+
 ## 0.24.7 stable
 
 Stable maintenance release focused on Auto-start reliability.
