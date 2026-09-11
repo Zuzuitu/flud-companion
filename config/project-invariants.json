@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "project": "Flud Companion",
+  "repository_role": "public-release-source",
+  "canonical_read_order": [
+    "docs/PROJECT_STATE.md",
+    "config/project-invariants.json",
+    "AGENTS.md"
+  ],
+  "current_release": {
+    "version_name": "0.24.7",
+    "version_code": 38,
+    "tag": "v0.24.7",
+    "application_id": "media.alexlab.fludremote"
+  },
+  "hard_invariants": {
+    "repository_truth_over_chat_memory": true,
+    "historical_development_repository_must_remain_private": true,
+    "no_live_pairing_credentials_in_public_source": true,
+    "no_private_pairing_qr_in_public_source": true,
+    "no_cloud_credentials_in_public_source": true,
+    "no_signing_material_in_git": true,
+    "no_apk_or_zip_binaries_in_source_tree": true,
+    "release_assets_must_be_preserved": true,
+    "published_tags_are_immutable_without_explicit_owner_rewrite_approval": true,
+    "workflow_bookkeeping_commits_to_main_are_forbidden": true,
+    "bot_generated_ready_or_published_markers_are_forbidden": true,
+    "remote_architecture_requires_outbound_polling_not_public_inbound_port": true,
+    "remote_relay_is_user_owned": true,
+    "autostart_uses_torrent_list_readiness_not_fixed_cold_start_delay": true,
+    "autostart_exactly_one_magnet_handoff_after_readiness": true,
+    "autostart_no_back_recovery_after_handoff": true,
+    "autostart_no_app_reopen_after_handoff": true,
+    "autostart_no_magnet_rehandoff_after_handoff": true,
+    "autostart_must_not_click_generic_main_screen_add_control": true,
+    "autostart_requires_real_add_torrent_confirmation_before_final_action": true,
+    "accessibility_enabled_detection_must_keep_secure_settings_fallback": true
+  },
+  "signing": {
+    "certificate_sha256": "c0bbc7472b10c74325039bbf83c9bc2f92e3ff869eaf49599ed67cd546bb5998",
+    "must_remain_permanent": true,
+    "secret_names_may_be_documented_but_values_must_never_be_committed": true
+  },
+  "autostart": {
+    "strategy": "semantic-v10+torrent-list-ready+single-handoff+strict-confirmation",
+    "readiness_poll_ms": 400,
+    "readiness_debounce_ms": 1200,
+    "prepare_timeout_ms": 120000,
+    "handoff_count": 1
+  },
+  "remote_relay": {
+    "r2_binding": "MAILBOX",
+    "default_bucket_name": "flud-companion-relay-mailbox",
+    "public_inbound_home_port_required": false
+  },
+  "durable_workflows": [
+    ".github/workflows/android.yml",
+    ".github/workflows/relay.yml",
+    ".github/workflows/public-readiness.yml",
+    ".github/workflows/public-source-scan.yml",
+    ".github/workflows/verify-signing.yml"
+  ],
+  "known_technical_debt": [
+    "In the published v0.24.7 snapshot, BridgeHttpServer.VERSION and CloudRelayClient.BRIDGE_VERSION report 0.24.6 while Android versionName is 0.24.7. Fix together in the next release; do not retag v0.24.7."
+  ]
+}

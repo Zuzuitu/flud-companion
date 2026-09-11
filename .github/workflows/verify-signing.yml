@@ -1,15 +1,18 @@
 name: Verify release signing
 
-# Re-run permanent signing verification for the current 0.24.1 Beta 2 test build.
+# Verification-only workflow for the permanent Flud Companion Android signing identity.
+# It must never commit run IDs, marker files, or generated bookkeeping back to main.
 on:
   push:
     branches: [ main ]
     paths:
       - '.github/workflows/verify-signing.yml'
+      - 'docs/signing.md'
+      - 'config/project-invariants.json'
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   verify-signing:
@@ -113,14 +116,3 @@ jobs:
           name: FludCompanion-release-signing-verification
           path: app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
-
-      - name: Record successful run id
-        run: |
-          set -euo pipefail
-          mkdir -p release
-          printf '%s\n' "$GITHUB_RUN_ID" > release/BETA2-SIGNING-TEST-RUN.txt
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add release/BETA2-SIGNING-TEST-RUN.txt
-          git commit -m 'Record Beta 2 signing verification run'
-          git push origin HEAD:main
