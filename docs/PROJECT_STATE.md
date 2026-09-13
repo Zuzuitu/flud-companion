@@ -1,7 +1,7 @@
 # Flud Companion - Project State
 
 LAST_UPDATED: 2026-09-11
-STATUS: Stable public release 0.24.8. The public release source is the immutable tag `v0.24.8`; `main` may move forward with post-release maintenance and governance changes.
+STATUS: Stable public release 0.24.9. The public release source is the immutable tag `v0.24.9`; `main` may move forward with post-release maintenance and governance changes.
 
 This file is the canonical human-readable technical checkpoint for Flud Companion.
 
@@ -24,10 +24,10 @@ Repository truth overrides chat memory. Do not reconstruct current behavior from
 
 ## Current public release
 
-- Release: `0.24.8`
-- Tag: `v0.24.8`
-- Android `versionCode`: `39`
-- Android `versionName`: `0.24.8`
+- Release: `0.24.9`
+- Tag: `v0.24.9`
+- Android `versionCode`: `40`
+- Android `versionName`: `0.24.9`
 - Application ID: `media.alexlab.fludremote`
 - Minimum Android SDK: 23
 - Target Android SDK: 33
@@ -66,7 +66,7 @@ The relay stores a SHA-256 hash of the Remote token. Live Remote tokens and pair
 
 The current stable strategy is:
 
-`semantic-v10+torrent-list-ready+single-handoff+strict-confirmation`
+`semantic-v11+structural-list-stability+preflight-reopen+single-handoff+strict-confirmation`
 
 This behavior is safety-critical and must not regress.
 
@@ -74,15 +74,17 @@ This behavior is safety-critical and must not regress.
 
 `FludAutoStartCoordinator` must not use a fixed cold-start delay.
 
-- If Flud is already foreground and the real torrent list is visible to Accessibility, use the fast path.
-- On cold start, open Flud normally without sending the magnet first.
-- Poll readiness approximately every 400 ms.
-- Treat the torrent list as ready when real torrent rows/titles are visible, or when Flud exposes an explicit empty-library state.
-- Require readiness to remain present for about 1.2 seconds before dispatch.
-- Give up after 120 seconds rather than sending into an unready Flud state.
+- Use structural torrent-list readiness rather than the first visible torrent title.
+- Fingerprint the visible torrent-row structure and reset readiness whenever that fingerprint changes.
+- Warm Flud uses a short structural stability check.
+- Cold/restoring Flud requires a longer unchanged structural fingerprint before handoff.
+- Recheck readiness immediately before dispatch.
+- If Flud disappears before any magnet handoff, Companion may reopen it and continue preflight.
+- An explicit retry of the same still-pending magnet may restart preflight rather than being rejected as stale.
+- Give up after the bounded preflight timeout rather than sending into an unstable Flud state.
 - Issue exactly one magnet handoff after readiness.
 
-The reason for this design is real-device behavior on Android TV/NVIDIA Shield: a cold Flud start may show the app before its existing torrent list is actually loaded. Sending the magnet before the list is ready can make Auto-start unreliable, especially with a larger active torrent list.
+This design was validated on real NVIDIA Shield hardware for the deeper cold-start case where Flud has been evicted from background memory and its torrent list is rebuilt progressively.
 
 ### After magnet handoff
 
@@ -166,7 +168,7 @@ Real third-party human contributions must retain correct attribution. Do not fal
 
 ## Known technical debt
 
-The 0.24.8 maintenance release resolves the previous internal version-reporting mismatch: Android package, LAN Bridge and Remote Bridge all report `0.24.8`.
+The 0.24.9 release promotes the hardware-validated structural Auto-start preflight and improves the relay setup layout on smaller screens.
 
 Some older comments inside `FludAutoStartService.kt` still mention earlier strategy generations. Runtime behavior and `STRATEGY` are authoritative; clean stale comments during a future normal source change without changing the validated safety behavior.
 
@@ -184,26 +186,3 @@ Verify all of the following:
 - release notes and `CHANGELOG.md` describe only validated behavior;
 - this checkpoint is updated after material architectural, release, security, or workflow changes.
 
-
-## Auto-start v11 candidate under hardware validation
-
-A new candidate is being validated for the cold-start failure reported after 0.24.8.
-
-Candidate version: `0.24.9-rc1`
-
-Candidate strategy:
-
-`semantic-v11+structural-list-stability+preflight-reopen+single-handoff+strict-confirmation`
-
-The failure mode identified in v10 is that the first visible torrent titles were treated as sufficient readiness. On a deeply cold/restoring Flud process, the list can still be changing internally at that point. v11 fingerprints the visible torrent-row structure and resets readiness whenever that fingerprint changes.
-
-Additional pre-handoff safety:
-
-- warm Flud gets only a short structural stability check;
-- cold/restoring Flud requires a longer unchanged structural fingerprint, not a fixed launch timer;
-- a final independent snapshot must match before the magnet is handed off;
-- if Flud disappears before handoff, Companion may reopen it because no magnet has been sent yet;
-- a second explicit send of the same still-pending magnet refreshes the preflight instead of being blocked by a stale queue;
-- after handoff the existing hard invariants remain unchanged: no Back, no reopen, no magnet re-handoff.
-
-Do not promote this candidate to the canonical stable strategy until it passes real NVIDIA Shield cold-start validation.
