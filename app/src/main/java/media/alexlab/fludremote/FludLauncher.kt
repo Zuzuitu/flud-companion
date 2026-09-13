@@ -31,12 +31,12 @@ object FludLauncher {
         return null
     }
 
-    fun launchMagnet(context: Context, magnet: String): Result {
+    fun launchMagnet(context: Context, magnet: String, preferredPackage: String? = null): Result {
         if (!magnet.startsWith("magnet:?", ignoreCase = true)) {
             return Result(false, message = "Invalid magnet URI")
         }
 
-        for (pkg in packages) {
+        for (pkg in packageOrder(preferredPackage)) {
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(magnet)).apply {
                 setPackage(pkg)
                 addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -69,8 +69,8 @@ object FludLauncher {
         return launchMagnet(context, magnet)
     }
 
-    fun openApp(context: Context): Result {
-        for (pkg in packages) {
+    fun openApp(context: Context, preferredPackage: String? = null): Result {
+        for (pkg in packageOrder(preferredPackage)) {
             val launchIntent = context.packageManager.getLaunchIntentForPackage(pkg) ?: continue
             launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             return try {
@@ -81,5 +81,10 @@ object FludLauncher {
             }
         }
         return Result(false, message = "Flud or Flud+ is not installed")
+    }
+
+    private fun packageOrder(preferredPackage: String?): List<String> {
+        if (preferredPackage.isNullOrBlank() || preferredPackage !in packages) return packages
+        return listOf(preferredPackage) + packages.filterNot { it == preferredPackage }
     }
 }
