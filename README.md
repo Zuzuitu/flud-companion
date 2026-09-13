@@ -41,12 +41,11 @@ No Tailscale or project-owned cloud account is required for Remote mode. Each us
 
 ### What's new
 
-- Fixed an Auto-start status bug where the Accessibility helper could be enabled in Android settings but still appear as OFF in Flud Companion.
-- Improved automatic download start reliability on slower Flud startups, especially with roughly 8-10 or more active torrents.
-- Auto-start now waits for Flud's real torrent list to become visible before handing over a magnet, while keeping the fast path when Flud is already ready.
-- Small stability improvements.
+- Improved Auto-start reliability during demanding Flud cold starts.
+- Improved the relay setup page layout on smaller screens.
+- Minor stability and visual refinements.
 
-See the [0.24.7 notes](docs/releases/v0.24.9.md), [release history](docs/releases/README.md) and full [CHANGELOG](CHANGELOG.md).
+See the [0.24.9 notes](docs/releases/v0.24.9.md), [release history](docs/releases/README.md) and full [CHANGELOG](CHANGELOG.md).
 
 ### Quick setup
 

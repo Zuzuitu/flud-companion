@@ -1,6 +1,6 @@
 # Flud Companion - Project State
 
-LAST_UPDATED: 2026-09-11
+LAST_UPDATED: 2026-09-13
 STATUS: Stable public release 0.24.9. The public release source is the immutable tag `v0.24.9`; `main` may move forward with post-release maintenance and governance changes.
 
 This file is the canonical human-readable technical checkpoint for Flud Companion.
