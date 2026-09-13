@@ -8,9 +8,9 @@
     "AGENTS.md"
   ],
   "current_release": {
-    "version_name": "0.24.8",
-    "version_code": 39,
-    "tag": "v0.24.8",
+    "version_name": "0.24.9",
+    "version_code": 40,
+    "tag": "v0.24.9",
     "application_id": "media.alexlab.fludremote"
   },
   "hard_invariants": {
@@ -42,11 +42,13 @@
     "secret_names_may_be_documented_but_values_must_never_be_committed": true
   },
   "autostart": {
-    "strategy": "semantic-v10+torrent-list-ready+single-handoff+strict-confirmation",
-    "readiness_poll_ms": 400,
-    "readiness_debounce_ms": 1200,
-    "prepare_timeout_ms": 120000,
-    "handoff_count": 1
+    "strategy": "semantic-v11+structural-list-stability+preflight-reopen+single-handoff+strict-confirmation",
+    "readiness_model": "structural_torrent_list_fingerprint",
+    "adaptive_stability": true,
+    "prehandoff_reopen_allowed": true,
+    "final_readiness_recheck": true,
+    "handoff_count": 1,
+    "prepare_timeout_ms": 120000
   },
   "remote_relay": {
     "r2_binding": "MAILBOX",
@@ -60,19 +62,5 @@
     ".github/workflows/public-source-scan.yml",
     ".github/workflows/verify-signing.yml"
   ],
-  "known_technical_debt": [],
-  "candidate_autostart": {
-    "status": "hardware-validation-required",
-    "version_name": "0.24.9-rc1",
-    "version_code": 40,
-    "strategy": "semantic-v11+structural-list-stability+preflight-reopen+single-handoff+strict-confirmation",
-    "rules": [
-      "structural torrent-list fingerprint must remain unchanged before handoff",
-      "warm and cold preflight use adaptive stability windows rather than a fixed launch delay",
-      "Flud may be reopened only before any magnet handoff if it disappears during preflight",
-      "same-magnet explicit retry may restart a pre-handoff queue",
-      "exactly one magnet handoff remains mandatory",
-      "no Back, app reopen, or magnet re-handoff is allowed after handoff"
-    ]
-  }
+  "known_technical_debt": []
 }
