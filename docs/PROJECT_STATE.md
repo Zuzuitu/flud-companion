@@ -81,10 +81,20 @@ This behavior is safety-critical and must not regress.
 - Recheck readiness immediately before dispatch.
 - If Flud disappears before any magnet handoff, Companion may reopen it and continue preflight.
 - An explicit retry of the same still-pending magnet may restart preflight rather than being rejected as stale.
-- Give up after the bounded preflight timeout rather than sending into an unstable Flud state.
+- Give up after the bounded 180-second preflight timeout rather than sending into an unstable Flud state.
 - Issue exactly one magnet handoff after readiness.
 
-This design was validated on real NVIDIA Shield hardware for the deeper cold-start case where Flud has been evicted from background memory and its torrent list is rebuilt progressively.
+Current v11 gate parameters:
+- warm structural stability: about 900 ms;
+- cold/restoring structural stability: about 3.5 seconds;
+- minimum stable samples: 3;
+- if Flud disappears before handoff for about 1.5 seconds, preflight may reopen it;
+- initial launch may be retried after about 8 seconds if Flud never becomes foreground;
+- maximum pre-handoff recovery opens: 2;
+- after recovery attempts are exhausted, fail safely rather than sending the magnet;
+- immediately before handoff, verify the exact structural fingerprint again after a short final check.
+
+This design was validated on real NVIDIA Shield hardware for the deeper cold-start case where Flud had been evicted from background memory and its torrent list was rebuilt progressively. One successful hardware validation is enough to promote the release that was explicitly approved by the owner, but future regressions must still be treated as real regressions rather than assuming this path can never fail again.
 
 ### After magnet handoff
 
@@ -99,6 +109,19 @@ Once the magnet has been handed to ready Flud:
 - only then may semantic/D-pad/gesture fallback confirm the final add action.
 
 The Accessibility helper status detector must retain the Android TV fallback that checks `Settings.Secure.ACCESSIBILITY_ENABLED` and `Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES` when `AccessibilityManager` is stale or reports a relative service name.
+
+
+## Relay setup page - mobile layout
+
+The self-hosted relay setup page is part of the public product surface.
+
+For small/mobile screens:
+- numbered setup steps must use a stable number column plus a flexible text column;
+- instructional phrases such as `Quick setup -> LAN + Remote` and `Remote QR` must not be forced into a narrow word-by-word column;
+- text must wrap naturally without overlapping adjacent text or step separators;
+- changes must preserve the existing premium dark visual language and keep the setup instructions readable on iPhone-sized viewports.
+
+0.24.9 includes this responsive layout correction.
 
 ## Pairing persistence
 
@@ -166,6 +189,23 @@ Real third-party human contributions must retain correct attribution. Do not fal
 - Device ID is not the authentication secret; Remote token is.
 - If a real secret is ever committed, history rewriting is not sufficient: rotate the secret.
 
+
+## Session checkpoint - 2026-09-13
+
+Decisions completed in this session:
+
+- Deep-cleaned the public repository history and removed obsolete one-shot development/release noise while preserving public Releases and assets.
+- Added persistent technical memory: `docs/PROJECT_STATE.md`, `config/project-invariants.json`, and `AGENTS.md`.
+- Signing verification was converted to verification-only behavior; durable CI must not write run-ID or publication marker commits into `main`.
+- 0.24.8 aligned Android package, LAN Bridge and Remote Bridge version reporting without changing validated Auto-start behavior.
+- A deeper real-world cold-start regression was then reproduced when Flud had been evicted from background memory and rebuilt its torrent list progressively.
+- Auto-start v11 replaced first-title readiness with structural torrent-list fingerprint stability, adaptive warm/cold gating, pre-handoff reopen recovery, same-pending-magnet retry refresh, and final fingerprint verification.
+- The hard boundary remains: recovery/reopen is allowed only before the magnet has been handed to Flud. After handoff there is no Back recovery, no app reopen, and no magnet re-handoff.
+- The v11 cold-start path was tested successfully on real NVIDIA Shield hardware and explicitly approved for public release.
+- 0.24.9 was released publicly with deliberately concise release notes: summarize user-visible reliability/UI improvements without narrating the internal sequence of failed experiments.
+- 0.24.9 also fixes the self-hosted relay setup page on small screens so setup phrases and the `Remote QR` instruction wrap cleanly without overlapping.
+- Current public baseline is therefore `v0.24.9`, versionCode `40`, with Auto-start strategy `semantic-v11+structural-list-stability+preflight-reopen+single-handoff+strict-confirmation`.
+
 ## Known technical debt
 
 The 0.24.9 release promotes the hardware-validated structural Auto-start preflight and improves the relay setup layout on smaller screens.
@@ -183,6 +223,6 @@ Verify all of the following:
 - relay validation passes;
 - public source scan passes;
 - no live pairing data or signing material is present;
-- release notes and `CHANGELOG.md` describe only validated behavior;
+- release notes and `CHANGELOG.md` describe validated user-facing behavior concisely and do not expose unnecessary internal failed-attempt history;
 - this checkpoint is updated after material architectural, release, security, or workflow changes.
 
