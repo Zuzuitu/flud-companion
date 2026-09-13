@@ -2,6 +2,18 @@
 
 This folder keeps the human-readable notes for Flud Companion public releases.
 
+## 0.24.9 stable
+
+Small reliability and UI maintenance release.
+
+Highlights:
+
+- Improved Auto-start reliability during demanding Flud cold starts.
+- Improved relay setup layout on smaller screens.
+- Minor stability and visual refinements.
+
+Full notes: [v0.24.9.md](v0.24.9.md)
+
 ## 0.24.8 stable
 
 Metadata-consistency maintenance release built from the validated 0.24.7 behavior.
