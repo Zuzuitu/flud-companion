@@ -21,7 +21,7 @@ class BridgeHttpServer(
     companion object {
         private const val MAX_HEADER_BYTES = 16 * 1024
         private const val MAX_BODY_BYTES = 16 * 1024
-        const val VERSION = "0.24.9-rc1"
+        const val VERSION = "0.24.9"
     }
 
     private val running = AtomicBoolean(false)
