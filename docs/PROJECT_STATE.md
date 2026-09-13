@@ -183,3 +183,27 @@ Verify all of the following:
 - no live pairing data or signing material is present;
 - release notes and `CHANGELOG.md` describe only validated behavior;
 - this checkpoint is updated after material architectural, release, security, or workflow changes.
+
+
+## Auto-start v11 candidate under hardware validation
+
+A new candidate is being validated for the cold-start failure reported after 0.24.8.
+
+Candidate version: `0.24.9-rc1`
+
+Candidate strategy:
+
+`semantic-v11+structural-list-stability+preflight-reopen+single-handoff+strict-confirmation`
+
+The failure mode identified in v10 is that the first visible torrent titles were treated as sufficient readiness. On a deeply cold/restoring Flud process, the list can still be changing internally at that point. v11 fingerprints the visible torrent-row structure and resets readiness whenever that fingerprint changes.
+
+Additional pre-handoff safety:
+
+- warm Flud gets only a short structural stability check;
+- cold/restoring Flud requires a longer unchanged structural fingerprint, not a fixed launch timer;
+- a final independent snapshot must match before the magnet is handed off;
+- if Flud disappears before handoff, Companion may reopen it because no magnet has been sent yet;
+- a second explicit send of the same still-pending magnet refreshes the preflight instead of being blocked by a stale queue;
+- after handoff the existing hard invariants remain unchanged: no Back, no reopen, no magnet re-handoff.
+
+Do not promote this candidate to the canonical stable strategy until it passes real NVIDIA Shield cold-start validation.

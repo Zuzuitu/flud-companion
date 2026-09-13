@@ -60,5 +60,19 @@
     ".github/workflows/public-source-scan.yml",
     ".github/workflows/verify-signing.yml"
   ],
-  "known_technical_debt": []
+  "known_technical_debt": [],
+  "candidate_autostart": {
+    "status": "hardware-validation-required",
+    "version_name": "0.24.9-rc1",
+    "version_code": 40,
+    "strategy": "semantic-v11+structural-list-stability+preflight-reopen+single-handoff+strict-confirmation",
+    "rules": [
+      "structural torrent-list fingerprint must remain unchanged before handoff",
+      "warm and cold preflight use adaptive stability windows rather than a fixed launch delay",
+      "Flud may be reopened only before any magnet handoff if it disappears during preflight",
+      "same-magnet explicit retry may restart a pre-handoff queue",
+      "exactly one magnet handoff remains mandatory",
+      "no Back, app reopen, or magnet re-handoff is allowed after handoff"
+    ]
+  }
 }
