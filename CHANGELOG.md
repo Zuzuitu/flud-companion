@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.25.0-rc2 (unreleased)
+- Fix `.torrent` selection in the iOS Files picker by avoiding unreliable MIME/extension pre-filtering.
+- Keep client-side filename/size checks and Bridge-side metainfo validation after selection.
+
 ## 0.25.0-rc1 (unreleased)
 - Add direct `.torrent` file handoff from LAN and Remote PWAs.
 - Keep Auto-start on the existing v11 structural preflight and single-handoff path.
