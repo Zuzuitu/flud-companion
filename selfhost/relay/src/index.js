@@ -60,6 +60,12 @@ async function bridgePoll(env, deviceId, request) {
     Object.assign(state, { lastSeenAt: now, deviceVersion: version, autoStartReady, autoStartMode });
     await putJson(env.MAILBOX, stateKey(deviceId), state);
   }
+  const staleInflight = await readJson(env.MAILBOX, inflightKey(deviceId));
+  if (staleInflight && (!staleInflight.at || now - staleInflight.at > COMMAND_MAX_AGE_MS)) {
+    if (staleInflight.type === "torrent" && staleInflight.fileKey) await env.MAILBOX.delete(staleInflight.fileKey);
+    await env.MAILBOX.delete(inflightKey(deviceId));
+  }
+
   let command = await readJson(env.MAILBOX, queuedKey(deviceId));
   if (command) {
     if (!command.at || now - command.at > COMMAND_MAX_AGE_MS) {
@@ -82,6 +88,7 @@ async function bridgeResult(env, deviceId, request) {
   if (!id) return json({ error: "Missing command id" }, 400);
   const result = { id, ok: body?.ok === true, message: typeof body?.message === "string" ? body.message.slice(0, 500) : null, package: typeof body?.package === "string" ? body.package.slice(0, 200) : null, at: Date.now() };
   const inflight = await readJson(env.MAILBOX, inflightKey(deviceId));
+  if (inflight && inflight.id !== id) return json({ error: "Result does not match inflight command" }, 409);
   Object.assign(auth.state, { lastSeenAt: Date.now(), lastResult: result });
   await putJson(env.MAILBOX, stateKey(deviceId), auth.state);
   if (inflight?.type === "torrent" && inflight.fileKey) await env.MAILBOX.delete(inflight.fileKey);
@@ -90,7 +97,7 @@ async function bridgeResult(env, deviceId, request) {
 }
 
 async function bridgeFile(env, deviceId, commandId, request) {
-  const auth = await authenticate(env, deviceId, request, true);
+  const auth = await authenticate(env, deviceId, request, false);
   if (!auth.ok) return auth.response;
   const inflight = await readJson(env.MAILBOX, inflightKey(deviceId));
   if (!inflight || inflight.type !== "torrent" || inflight.id !== commandId || !inflight.fileKey) {
@@ -172,8 +179,17 @@ async function apiTorrent(env, deviceId, request) {
   if (!bytes.length) return json({ error: "Torrent file is empty" }, 400);
   if (bytes.length > MAX_TORRENT_BYTES) return json({ error: "Torrent file exceeds 5 MB" }, 413);
   if (bytes[0] !== 100 || bytes[bytes.length - 1] !== 101) return json({ error: "Invalid .torrent metainfo" }, 400);
-  const probe = new TextDecoder("latin1").decode(bytes.subarray(0, Math.min(bytes.length, 65536)));
-  if (!probe.includes("4:info")) return json({ error: "Invalid .torrent metainfo" }, 400);
+  const infoNeedle = [52, 58, 105, 110, 102, 111];
+  let infoSeen = false;
+  const probeLimit = Math.min(bytes.length - infoNeedle.length, 65536);
+  for (let i = 0; i <= probeLimit && !infoSeen; i++) {
+    let match = true;
+    for (let j = 0; j < infoNeedle.length; j++) {
+      if (bytes[i + j] !== infoNeedle[j]) { match = false; break; }
+    }
+    infoSeen = match;
+  }
+  if (!infoSeen) return json({ error: "Invalid .torrent metainfo" }, 400);
 
   const id = crypto.randomUUID();
   const fileKey = torrentFileKey(deviceId, id);
