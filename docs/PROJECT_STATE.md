@@ -41,10 +41,11 @@ The published release tag and GitHub Release assets are part of release integrit
 
 ## Unreleased development candidate
 
-The source tree contains an unreleased **0.25.0-rc1** candidate (versionCode 41) for hardware validation. Public stable remains **0.24.9** until the owner explicitly approves a new release.
+The source tree contains an unreleased **0.25.0-rc2** candidate (versionCode 42) for hardware validation. Public stable remains **0.24.9** until the owner explicitly approves a new release.
 
 Candidate scope:
 - direct single-file `.torrent` selection in LAN and Remote PWAs;
+- iOS Files picker intentionally does not use an HTML `accept` filter because iOS can gray out valid `.torrent` files when their MIME/UTType mapping is unknown; validation happens after selection and again in the Bridge;
 - maximum accepted `.torrent` size: 5 MB;
 - strict bencode/metainfo validation in the Android Bridge;
 - read-only `content://` handoff to Flud from private app cache;
