@@ -8,11 +8,11 @@ import android.os.Looper
  * Safe Auto-start coordinator.
  *
  * v11 readiness rule:
- * - Never dispatch a magnet merely because the first torrent title appeared.
+ * - Never dispatch merely because the first torrent title appeared.
  * - Track the structural fingerprint of visible torrent rows and require it to stop changing.
  * - Warm Flud gets a short structural check; cold/restoring Flud gets a longer adaptive gate.
- * - If Flud disappears before handoff, reopen it safely because no magnet has been sent yet.
- * - After handoff, exactly one magnet handoff remains the hard invariant.
+ * - If Flud disappears before handoff, reopen it safely because no payload has been sent yet.
+ * - After handoff, exactly one payload handoff remains the hard invariant.
  */
 object FludAutoStartCoordinator {
     private const val PREPARE_TIMEOUT_MS = 180_000L
@@ -23,24 +23,44 @@ object FludAutoStartCoordinator {
     private val lock = Any()
     private val gate = FludPreflightGate()
 
-    @Volatile private var queuedMagnet: String? = null
+    private sealed class PendingPayload {
+        data class Magnet(val value: String) : PendingPayload()
+        data class Torrent(val value: TorrentFileSupport.StoredTorrent) : PendingPayload()
+
+        fun label(): String = when (this) {
+            is Magnet -> "magnet"
+            is Torrent -> ".torrent file"
+        }
+
+        fun sameExplicitRetry(other: PendingPayload): Boolean =
+            this is Magnet && other is Magnet && value == other.value
+    }
+
+    @Volatile private var queuedPayload: PendingPayload? = null
     @Volatile private var queuedPackage: String? = null
     @Volatile private var queuedAt = 0L
     @Volatile private var generation = 0L
 
     fun submit(context: Context, magnet: String): FludLauncher.Result {
-        val appContext = context.applicationContext
         if (!magnet.startsWith("magnet:?", ignoreCase = true)) {
             return FludLauncher.Result(false, message = "Invalid magnet URI")
         }
+        return submitPayload(context.applicationContext, PendingPayload.Magnet(magnet))
+    }
 
-        val pkg = FludLauncher.installedPackage(appContext)
+    fun submitTorrent(
+        context: Context,
+        torrent: TorrentFileSupport.StoredTorrent
+    ): FludLauncher.Result = submitPayload(context.applicationContext, PendingPayload.Torrent(torrent))
+
+    private fun submitPayload(context: Context, payload: PendingPayload): FludLauncher.Result {
+        val pkg = FludLauncher.installedPackage(context)
             ?: return FludLauncher.Result(false, message = "Flud or Flud+ is not installed")
 
         synchronized(lock) {
-            val existing = queuedMagnet
-            if (existing != null && existing != magnet) {
-                return FludLauncher.Result(false, pkg, "Another Auto-start magnet is still preparing Flud")
+            val existing = queuedPayload
+            if (existing != null && !existing.sameExplicitRetry(payload)) {
+                return FludLauncher.Result(false, pkg, "Another Auto-start payload is still preparing Flud")
             }
 
             val now = System.currentTimeMillis()
@@ -48,17 +68,15 @@ object FludAutoStartCoordinator {
             val snapshot = if (foreground) FludAutoStartService.torrentListSnapshot(pkg) else null
             val cold = !(foreground && snapshot?.readyCandidate == true)
 
-            // A second explicit send of the same magnet is a user retry. queuedMagnet exists
-            // only before handoff, so restarting this preflight cannot duplicate a Flud command.
             generation += 1L
             val myGeneration = generation
-            queuedMagnet = magnet
+            queuedPayload = payload
             queuedPackage = pkg
             queuedAt = now
 
             var openRequested = false
             if (!foreground) {
-                val opened = FludAutoStartService.openFludForPreflight(appContext, pkg)
+                val opened = FludAutoStartService.openFludForPreflight(context, pkg)
                 if (!opened.success) {
                     clearQueueLocked()
                     return opened
@@ -67,26 +85,26 @@ object FludAutoStartCoordinator {
             }
 
             gate.reset(now, cold = cold, initialOpenRequested = openRequested)
-            FludAutoStartService.cancel("Preparing Flud before magnet handoff")
+            FludAutoStartService.cancel("Preparing Flud before ${payload.label()} handoff")
             FludAutoStartService.report(
-                if (existing == magnet) "Retrying Flud preflight" else "Preparing Flud",
+                if (existing?.sameExplicitRetry(payload) == true) "Retrying Flud preflight" else "Preparing Flud",
                 if (cold) {
-                    "Waiting for torrent-list structure to finish restoring; magnet has not been sent"
+                    "Waiting for torrent-list structure to finish restoring; ${payload.label()} has not been sent"
                 } else {
-                    "Flud is already open; verifying the torrent-list structure before handoff"
+                    "Flud is already open; verifying the torrent-list structure before ${payload.label()} handoff"
                 }
             )
-            scheduleCheck(appContext, myGeneration, CHECK_INTERVAL_MS)
+            scheduleCheck(context, myGeneration, CHECK_INTERVAL_MS)
 
             return FludLauncher.Result(
                 true,
                 pkg,
-                if (existing == magnet) {
+                if (existing?.sameExplicitRetry(payload) == true) {
                     "Pending Auto-start retry refreshed; magnet is still held locally until Flud is structurally ready"
                 } else if (cold) {
-                    "Flud is preparing; magnet is held locally until its torrent list stops changing"
+                    "Flud is preparing; ${payload.label()} is held locally until its torrent list stops changing"
                 } else {
-                    "Flud is open; verifying torrent-list stability before Auto-start handoff"
+                    "Flud is open; verifying torrent-list stability before Auto-start ${payload.label()} handoff"
                 }
             )
         }
@@ -97,12 +115,12 @@ object FludAutoStartCoordinator {
     }
 
     private fun checkAndDispatch(context: Context, expectedGeneration: Long) {
-        val magnet: String
+        val payload: PendingPayload
         val pkg: String
         val startedAt: Long
         synchronized(lock) {
             if (expectedGeneration != generation) return
-            magnet = queuedMagnet ?: return
+            payload = queuedPayload ?: return
             pkg = queuedPackage ?: return
             startedAt = queuedAt
         }
@@ -116,7 +134,7 @@ object FludAutoStartCoordinator {
             }
             FludAutoStartService.report(
                 "Flud preflight timed out",
-                "No magnet was sent because the torrent list never reached a stable structural state"
+                "No ${payload.label()} was sent because the torrent list never reached a stable structural state"
             )
             BridgePreferences.recordLastCommand(context, "Auto-start: Flud never became structurally ready", false)
             return
@@ -139,17 +157,14 @@ object FludAutoStartCoordinator {
                         if (expectedGeneration != generation) return
                         clearQueueLocked()
                     }
-                    FludAutoStartService.report(
-                        "Could not reopen Flud during preflight",
-                        reopened.message
-                    )
+                    FludAutoStartService.report("Could not reopen Flud during preflight", reopened.message)
                     BridgePreferences.recordLastCommand(context, "Auto-start: ${reopened.message}", false)
                     return
                 }
                 gate.markRecoveryOpen(now)
                 FludAutoStartService.report(
                     "Flud disappeared before handoff - reopened safely",
-                    "Recovery open ${gate.recoveryOpenCount()}; magnet is still local and has not been sent"
+                    "Recovery open ${gate.recoveryOpenCount()}; ${payload.label()} is still local and has not been sent"
                 )
                 scheduleCheck(context, expectedGeneration, 700L)
                 return
@@ -162,7 +177,7 @@ object FludAutoStartCoordinator {
                 }
                 FludAutoStartService.report(
                     "Flud could not stay open during preflight",
-                    "No magnet was sent; retry is safe"
+                    "No ${payload.label()} was sent; retry is safe"
                 )
                 BridgePreferences.recordLastCommand(context, "Auto-start: Flud did not remain available before handoff", false)
                 return
@@ -179,7 +194,7 @@ object FludAutoStartCoordinator {
                     "${gate.modeLabel()} preflight stable for ${gate.stableFor(now)}ms across ${gate.stableSampleCount()} checks; final verification pending"
                 )
                 handler.postDelayed({
-                    finalVerifyAndDispatch(context, expectedGeneration, pkg, magnet, expectedSignature)
+                    finalVerifyAndDispatch(context, expectedGeneration, pkg, payload, expectedSignature)
                 }, FINAL_VERIFY_MS)
                 return
             }
@@ -201,11 +216,11 @@ object FludAutoStartCoordinator {
         context: Context,
         expectedGeneration: Long,
         pkg: String,
-        magnet: String,
+        payload: PendingPayload,
         expectedSignature: String
     ) {
         synchronized(lock) {
-            if (expectedGeneration != generation || queuedMagnet != magnet || queuedPackage != pkg) return
+            if (expectedGeneration != generation || queuedPayload != payload || queuedPackage != pkg) return
         }
 
         val foreground = FludAutoStartService.isFludForeground(pkg)
@@ -214,32 +229,40 @@ object FludAutoStartCoordinator {
             gate.invalidate()
             FludAutoStartService.report(
                 "Flud changed during final readiness check",
-                "Preflight was reset before handoff; magnet is still local and unsent"
+                "Preflight was reset before handoff; ${payload.label()} is still local and unsent"
             )
             scheduleCheck(context, expectedGeneration, CHECK_INTERVAL_MS)
             return
         }
 
         synchronized(lock) {
-            if (expectedGeneration != generation || queuedMagnet != magnet || queuedPackage != pkg) return
+            if (expectedGeneration != generation || queuedPayload != payload || queuedPackage != pkg) return
             clearQueueLocked()
         }
 
-        val result = dispatchNow(context, pkg, magnet, "stable torrent-list fingerprint verified twice")
+        val result = dispatchNow(context, pkg, payload, "stable torrent-list fingerprint verified twice")
         BridgePreferences.recordLastCommand(context, "Auto-start: ${result.message}", result.success)
     }
 
-    private fun dispatchNow(context: Context, pkg: String, magnet: String, reason: String): FludLauncher.Result {
+    private fun dispatchNow(
+        context: Context,
+        pkg: String,
+        payload: PendingPayload,
+        reason: String
+    ): FludLauncher.Result {
         FludAutoStartService.request(pkg)
-        val result = FludAutoStartService.handoffMagnet(context, pkg, magnet)
+        val result = when (payload) {
+            is PendingPayload.Magnet -> FludAutoStartService.handoffMagnet(context, pkg, payload.value)
+            is PendingPayload.Torrent -> FludAutoStartService.handoffTorrent(context, pkg, payload.value)
+        }
         if (result.success) {
             FludAutoStartService.retarget(result.packageName)
             FludAutoStartService.report(
-                "Magnet handed to structurally ready Flud - waiting for Add torrent",
-                "$reason; exactly one magnet handoff was issued"
+                "${payload.label()} handed to structurally ready Flud - waiting for Add torrent",
+                "$reason; exactly one ${payload.label()} handoff was issued"
             )
         } else {
-            FludAutoStartService.cancel("Flud magnet handoff failed; auto-start cancelled")
+            FludAutoStartService.cancel("Flud ${payload.label()} handoff failed; auto-start cancelled")
         }
         return if (result.success) {
             result.copy(message = "${result.message}; Auto-start handoff after structural readiness")
@@ -247,7 +270,7 @@ object FludAutoStartCoordinator {
     }
 
     private fun clearQueueLocked() {
-        queuedMagnet = null
+        queuedPayload = null
         queuedPackage = null
         queuedAt = 0L
         generation += 1L
