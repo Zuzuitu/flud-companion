@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.24.1 stable
+- Add a Hide / Unhide control for Saved pairing in the Remote PWA.
+- Small bug fixes and stability improvements.
+
 ## 0.24.1
 
 - Fix iPhone/iPad Home Screen PWA pairing transfer by using a short-lived Secure bootstrap cookie, then moving credentials into the installed PWA's own local storage.

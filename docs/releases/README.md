@@ -2,6 +2,18 @@
 
 This folder keeps the human-readable notes for Flud Companion public releases.
 
+## 0.24.1 stable
+
+First stable release of Flud Companion.
+
+Highlights:
+
+- Saved pairing in the Remote PWA can be hidden and shown again without removing the pairing.
+- Small bug fixes and stability improvements.
+- Signed Android APK for Android / Android TV, including NVIDIA Shield.
+
+Full notes: [v0.24.1.md](v0.24.1.md)
+
 ## 0.24.1 Beta 2
 
 Bug-fix beta validated on real NVIDIA Shield / Android TV hardware and iPhone PWA.
