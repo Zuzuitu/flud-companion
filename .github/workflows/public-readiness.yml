@@ -1,0 +1,40 @@
+name: Verify public release readiness
+
+on:
+  public:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-public:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Public source hygiene scan
+        run: bash scripts/check-public-source.sh
+
+      - name: Verify public repository endpoints
+        env:
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          curl -fsSL "https://raw.githubusercontent.com/${REPO}/main/README.md" >/dev/null
+          curl -fsSL "https://raw.githubusercontent.com/${REPO}/main/LICENSE" >/dev/null
+          curl -fsSL "https://raw.githubusercontent.com/${REPO}/main/selfhost/relay/wrangler.jsonc" >/dev/null
+
+      - name: Validate relay JavaScript
+        working-directory: selfhost/relay
+        run: node --check src/index.js
+
+      - name: Install relay dependencies
+        working-directory: selfhost/relay
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Wrangler dry-run
+        working-directory: selfhost/relay
+        run: npx wrangler deploy --dry-run --outdir dist

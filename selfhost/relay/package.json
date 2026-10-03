@@ -1,0 +1,19 @@
+{
+  "name": "flud-companion-selfhost-relay",
+  "version": "0.24.0",
+  "private": true,
+  "scripts": {
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev"
+  },
+  "cloudflare": {
+    "bindings": {
+      "MAILBOX": {
+        "description": "Private R2 mailbox used to queue commands between your Android Bridge and your Remote PWA."
+      }
+    }
+  },
+  "devDependencies": {
+    "wrangler": "^4.122.0"
+  }
+}

@@ -1,0 +1,26 @@
+.gradle/
+.idea/
+local.properties
+**/build/
+*.iml
+.DS_Store
+
+# Signing / credentials
+keystore/
+*.jks
+*.keystore
+*.p12
+*.pfx
+.env
+.env.*
+!*.env.example
+
+# Build artifacts
+*.apk
+*.aab
+*.zip
+
+# Local/private relay configuration
+wrangler.toml
+.dev.vars
+.dev.vars.*

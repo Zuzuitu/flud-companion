@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "flud-companion-relay",
+  "main": "src/index.js",
+  "compatibility_date": "2026-08-14",
+  "workers_dev": true,
+  "r2_buckets": [
+    {
+      "binding": "MAILBOX",
+      "bucket_name": "flud-companion-relay-mailbox"
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}

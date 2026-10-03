@@ -1,0 +1,42 @@
+name: Validate Remote relay
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - 'selfhost/relay/**'
+      - '.github/workflows/relay.yml'
+  pull_request:
+    branches: [ main ]
+    paths:
+      - 'selfhost/relay/**'
+      - '.github/workflows/relay.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: selfhost/relay
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: JavaScript syntax check
+        run: node --check src/index.js
+
+      - name: Install relay dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Wrangler dry run
+        run: npx wrangler deploy --dry-run --outdir dist
