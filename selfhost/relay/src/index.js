@@ -1,4 +1,4 @@
-const VERSION = "0.25.0-rc2-selfhost";
+const VERSION = "0.25.0-selfhost";
 const ONLINE_WINDOW_MS = 25_000;
 const LAST_SEEN_WRITE_INTERVAL_MS = 8_000;
 const COMMAND_MAX_AGE_MS = 10 * 60 * 1000;
@@ -225,7 +225,7 @@ function manifest() {
   return text(JSON.stringify({ name: "Flud Companion", short_name: "Flud Companion", start_url: "/app", scope: "/", display: "standalone", background_color: "#020508", theme_color: "#03070A", icons: [{ src: "/icon.svg", sizes: "any", type: "image/svg+xml", purpose: "any maskable" }] }), "application/manifest+json; charset=utf-8", "public, max-age=3600");
 }
 function serviceWorker() {
-  const code = "const C='flud-companion-v0250rc2';self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(['/app','/manifest.webmanifest','/icon.svg']))));self.addEventListener('activate',e=>e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C&&k.startsWith('flud-companion-')).map(k=>caches.delete(k))))])));self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;if(e.request.mode==='navigate'){e.respondWith(fetch(e.request).catch(()=>caches.match('/app')));return}e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});";
+  const code = "const C='flud-companion-v0250-stable';self.addEventListener('install',e=>e.waitUntil(caches.open(C).then(c=>c.addAll(['/app','/manifest.webmanifest','/icon.svg']))));self.addEventListener('activate',e=>e.waitUntil(Promise.all([self.clients.claim(),caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==C&&k.startsWith('flud-companion-')).map(k=>caches.delete(k))))])));self.addEventListener('fetch',e=>{if(e.request.method!=='GET')return;if(e.request.mode==='navigate'){e.respondWith(fetch(e.request).catch(()=>caches.match('/app')));return}e.respondWith(fetch(e.request).catch(()=>caches.match(e.request)));});";
   return text(code, "application/javascript; charset=utf-8", "no-cache");
 }
 
