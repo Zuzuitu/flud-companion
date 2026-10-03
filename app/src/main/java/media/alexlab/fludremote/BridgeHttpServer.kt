@@ -124,7 +124,9 @@ class BridgeHttpServer(
                 } else {
                     ByteArray(0)
                 }
-                val body = if (bodyBytes.isNotEmpty()) String(bodyBytes, StandardCharsets.UTF_8) else ""
+                val body: String by lazy {
+                    if (bodyBytes.isNotEmpty()) String(bodyBytes, StandardCharsets.UTF_8) else ""
+                }
 
                 when {
                     method == "GET" && (path == "/app" || path == "/app/") -> {
