@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.25.0-rc1 (unreleased)
+- Add direct `.torrent` file handoff from LAN and Remote PWAs.
+- Keep Auto-start on the existing v11 structural preflight and single-handoff path.
+- Store Remote `.torrent` payloads only temporarily in the user's existing R2 mailbox and delete them after Bridge pickup/result.
+
 ## 0.24.9 stable
 - Improve Auto-start reliability during demanding Flud cold starts.
 - Improve the relay setup page layout on smaller screens.
