@@ -32,6 +32,10 @@
             <action android:name="android.intent.action.VIEW" />
             <data android:scheme="magnet" />
         </intent>
+        <intent>
+            <action android:name="android.intent.action.VIEW" />
+            <data android:mimeType="application/x-bittorrent" />
+        </intent>
     </queries>
 
     <application
@@ -69,6 +73,12 @@
             android:name=".BridgeService"
             android:exported="false"
             android:stopWithTask="false" />
+
+        <provider
+            android:name=".TorrentContentProvider"
+            android:authorities="${applicationId}.torrents"
+            android:exported="false"
+            android:grantUriPermissions="true" />
 
         <service
             android:name=".FludAutoStartService"
