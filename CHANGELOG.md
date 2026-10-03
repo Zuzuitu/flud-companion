@@ -1,13 +1,10 @@
 # Changelog
 
-## 0.25.0-rc2 (unreleased)
-- Fix `.torrent` selection in the iOS Files picker by avoiding unreliable MIME/extension pre-filtering.
-- Keep client-side filename/size checks and Bridge-side metainfo validation after selection.
-
-## 0.25.0-rc1 (unreleased)
-- Add direct `.torrent` file handoff from LAN and Remote PWAs.
-- Keep Auto-start on the existing v11 structural preflight and single-handoff path.
-- Store Remote `.torrent` payloads only temporarily in the user's existing R2 mailbox and delete them after Bridge pickup/result.
+## 0.25.0 stable
+- Add direct `.torrent` file selection and sending from both LAN and Remote PWAs.
+- Improve iPhone/iPad Files compatibility when choosing `.torrent` files.
+- Support optional Auto-start for `.torrent` files using the same guarded v11 handoff path as magnet links.
+- Keep Remote `.torrent` payloads temporary in the user's existing self-hosted R2 mailbox.
 
 ## 0.24.9 stable
 - Improve Auto-start reliability during demanding Flud cold starts.

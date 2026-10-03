@@ -2,6 +2,18 @@
 
 This folder keeps the human-readable notes for Flud Companion public releases.
 
+## 0.25.0 stable
+
+Adds direct `.torrent` file sending alongside magnet links.
+
+Highlights:
+
+- Send `.torrent` files directly from the LAN or Remote PWA.
+- Improved iPhone/iPad Files compatibility for selecting `.torrent` files.
+- Optional Auto-start works with both magnet links and `.torrent` files.
+
+Full notes: [v0.25.0.md](v0.25.0.md)
+
 ## 0.24.9 stable
 
 Small reliability and UI maintenance release.

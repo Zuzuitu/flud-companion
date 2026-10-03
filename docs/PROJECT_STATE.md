@@ -1,7 +1,7 @@
 # Flud Companion - Project State
 
 LAST_UPDATED: 2026-10-03
-STATUS: Stable public release 0.24.9. The public release source is the immutable tag `v0.24.9`; `main` may move forward with post-release maintenance and governance changes.
+STATUS: Stable public release 0.25.0. The public release source is the immutable tag `v0.25.0`; `main` may move forward with post-release maintenance and governance changes.
 
 This file is the canonical human-readable technical checkpoint for Flud Companion.
 
@@ -24,10 +24,10 @@ Repository truth overrides chat memory. Do not reconstruct current behavior from
 
 ## Current public release
 
-- Release: `0.24.9`
-- Tag: `v0.24.9`
-- Android `versionCode`: `40`
-- Android `versionName`: `0.24.9`
+- Release: `0.25.0`
+- Tag: `v0.25.0`
+- Android `versionCode`: `43`
+- Android `versionName`: `0.25.0`
 - Application ID: `media.alexlab.fludremote`
 - Minimum Android SDK: 23
 - Target Android SDK: 33
@@ -39,20 +39,20 @@ Repository truth overrides chat memory. Do not reconstruct current behavior from
 The published release tag and GitHub Release assets are part of release integrity. Do not move a published tag, recreate a release, or replace its assets unless the owner explicitly requests a history/release rewrite and the consequences are understood.
 
 
-## Unreleased development candidate
+## 0.25.0 release scope
 
-The source tree contains an unreleased **0.25.0-rc2** candidate (versionCode 42) for hardware validation. Public stable remains **0.24.9** until the owner explicitly approves a new release.
+0.25.0 promotes the validated `.torrent` file handoff feature to stable.
 
-Candidate scope:
+Stable behavior:
 - direct single-file `.torrent` selection in LAN and Remote PWAs;
-- iOS Files picker intentionally does not use an HTML `accept` filter because iOS can gray out valid `.torrent` files when their MIME/UTType mapping is unknown; validation happens after selection and again in the Bridge;
+- iOS Files picker intentionally does not use an HTML `accept` filter because iOS can gray out valid `.torrent` files when MIME/UTType mapping is unknown;
 - maximum accepted `.torrent` size: 5 MB;
-- strict bencode/metainfo validation in the Android Bridge;
+- client-side filename/size checks plus strict bencode/metainfo validation in the Android Bridge;
 - read-only `content://` handoff to Flud from private app cache;
-- Remote transport uses the existing user-owned R2 mailbox only as temporary payload storage;
+- Remote transport uses the user's existing self-hosted R2 mailbox only as temporary payload storage and removes the payload after command completion/stale cleanup;
 - v11 structural preflight and exactly-one handoff remain the Auto-start safety boundary for both magnets and `.torrent` files.
 
-This candidate is **not hardware-validated yet**. Treat it as patch ready for CI first, then Shield testing. Do not publish it as stable based only on a green build.
+The LAN and Remote `.torrent` paths were validated on real iPhone + NVIDIA Shield hardware before stable publication.
 
 ## Product architecture
 
@@ -220,11 +220,20 @@ Decisions completed in this session:
 - The v11 cold-start path was tested successfully on real NVIDIA Shield hardware and explicitly approved for public release.
 - 0.24.9 was released publicly with deliberately concise release notes: summarize user-visible reliability/UI improvements without narrating the internal sequence of failed experiments.
 - 0.24.9 also fixes the self-hosted relay setup page on small screens so setup phrases and the `Remote QR` instruction wrap cleanly without overlapping.
-- Current public baseline is therefore `v0.24.9`, versionCode `40`, with Auto-start strategy `semantic-v11+structural-list-stability+preflight-reopen+single-handoff+strict-confirmation`.
+- The 2026-09-13 public baseline was `v0.24.9`, versionCode `40`, with Auto-start strategy `semantic-v11+structural-list-stability+preflight-reopen+single-handoff+strict-confirmation`.
+
+## Session checkpoint - 2026-10-03
+
+- Added direct `.torrent` file sending to both LAN and Remote PWAs.
+- iPhone/iPad file selection was fixed by removing unreliable HTML MIME/extension pre-filtering while retaining validation after selection.
+- Remote `.torrent` transport reuses the user-owned R2 mailbox temporarily; no shared relay or inbound home port was introduced.
+- LAN and personal Remote paths were validated successfully on real iPhone + NVIDIA Shield hardware.
+- The stable release is now `v0.25.0`, Android versionCode `43`.
+- Release notes remain concise and user-facing, centered on the new `.torrent` file capability.
 
 ## Known technical debt
 
-The 0.24.9 release promotes the hardware-validated structural Auto-start preflight and improves the relay setup layout on smaller screens.
+The 0.25.0 release adds hardware-validated `.torrent` file handoff while preserving the structural Auto-start preflight and mobile relay layout fixes from 0.24.9.
 
 Some older comments inside `FludAutoStartService.kt` still mention earlier strategy generations. Runtime behavior and `STRATEGY` are authoritative; clean stale comments during a future normal source change without changing the validated safety behavior.
 
