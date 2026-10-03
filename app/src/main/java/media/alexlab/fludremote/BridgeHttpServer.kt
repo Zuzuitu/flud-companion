@@ -22,7 +22,7 @@ class BridgeHttpServer(
     companion object {
         private const val MAX_HEADER_BYTES = 16 * 1024
         private const val MAX_BODY_BYTES = TorrentFileSupport.MAX_TORRENT_BYTES
-        const val VERSION = "0.25.0-rc1"
+        const val VERSION = "0.25.0-rc2"
     }
 
     private val running = AtomicBoolean(false)
