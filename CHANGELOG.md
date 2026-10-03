@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.24.9 stable
+- Improve Auto-start reliability during demanding Flud cold starts.
+- Improve the relay setup page layout on smaller screens.
+- Minor stability and visual refinements.
+
 ## 0.24.8 stable
 - Align Android package, LAN Bridge and Remote Bridge version reporting on 0.24.8.
 - Keep the validated Auto-start v10 behavior from 0.24.7 unchanged.

@@ -22,7 +22,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 /**
  * Optional helper used only after an explicit LAN or Remote command requests auto-start.
  *
- * v0.20.0 guarded strategy:
+ * v11 guarded strategy:
  *  1. Arm the helper before the magnet intent is launched, so slow/cold Flud starts do not
  *     lose the first accessibility events.
  *  2. Wait up to 20 seconds and keep scanning for a high-confidence confirmation control.
@@ -48,7 +48,7 @@ class FludAutoStartService : AccessibilityService() {
         private const val CLICK_DELAY_MS = 190L
         private const val MAX_SCAN_NODES = 220
         private const val SEMANTIC_SCORE_THRESHOLD = 8
-        private const val STRATEGY = "semantic-v10+torrent-list-ready+single-handoff+strict-confirmation"
+        private const val STRATEGY = "semantic-v11+structural-list-stability+preflight-reopen+single-handoff+strict-confirmation"
 
         @Volatile private var pendingUntil = 0L
         @Volatile private var pendingSince = 0L
@@ -169,25 +169,45 @@ class FludAutoStartService : AccessibilityService() {
             return true
         }
 
-        fun isFludTorrentListReady(packageName: String?): Boolean {
-            val service = activeService ?: return false
-            val root = try { service.rootInActiveWindow } catch (_: Exception) { null } ?: return false
+        data class TorrentListSnapshot(
+            val readyCandidate: Boolean,
+            val signature: String?,
+            val titleCount: Int,
+            val explicitEmpty: Boolean,
+            val diagnostic: String
+        )
+
+        fun torrentListSnapshot(packageName: String?): TorrentListSnapshot? {
+            val service = activeService ?: return null
+            val root = try { service.rootInActiveWindow } catch (_: Exception) { null } ?: return null
             val rootPackage = root.packageName?.toString()
-            if (packageName.isNullOrBlank() || rootPackage != packageName) return false
-            return try { service.mainTorrentListProbe(root).first } catch (_: Exception) { false }
+            if (packageName.isNullOrBlank() || rootPackage != packageName) return null
+            return try { service.mainTorrentListProbe(root) } catch (e: Exception) {
+                TorrentListSnapshot(
+                    readyCandidate = false,
+                    signature = null,
+                    titleCount = 0,
+                    explicitEmpty = false,
+                    diagnostic = "Torrent-list probe failed: ${e.javaClass.simpleName}"
+                )
+            }
         }
 
-        fun torrentListDiagnostic(packageName: String?): String {
-            val service = activeService ?: return "Accessibility service not connected"
-            val root = try { service.rootInActiveWindow } catch (_: Exception) { null }
-                ?: return "No active Flud window"
-            val rootPackage = root.packageName?.toString()
-            if (packageName.isNullOrBlank() || rootPackage != packageName) {
-                return "Flud is not the active window"
-            }
-            return try { service.mainTorrentListProbe(root).second } catch (e: Exception) {
-                "Torrent-list probe failed: ${e.javaClass.simpleName}"
-            }
+        fun isFludTorrentListReady(packageName: String?): Boolean =
+            torrentListSnapshot(packageName)?.readyCandidate == true
+
+        fun torrentListDiagnostic(packageName: String?): String =
+            torrentListSnapshot(packageName)?.diagnostic
+                ?: "Flud is not the active window or Accessibility is not connected"
+
+        fun openFludForPreflight(context: Context, packageName: String): FludLauncher.Result {
+            val launchContext: Context = activeService ?: context
+            return FludLauncher.openApp(launchContext, packageName)
+        }
+
+        fun handoffMagnet(context: Context, packageName: String, magnet: String): FludLauncher.Result {
+            val launchContext: Context = activeService ?: context
+            return FludLauncher.launchMagnet(launchContext, magnet, packageName)
         }
 
         private fun clear(status: String, diagnostic: String? = null) {
@@ -290,7 +310,7 @@ class FludAutoStartService : AccessibilityService() {
             // v9 has no recovery navigation after magnet dispatch. If Flud still exposes
             // the wrong picker, leave the task untouched rather than risking an app exit.
             lastStatus = "Unexpected torrent-file picker after safe handoff"
-            lastDiagnostic = "No Back, no app reopen and no magnet retry are allowed in v9"
+            lastDiagnostic = "No Back, no app reopen and no magnet retry are allowed after the v11 handoff"
             scheduleAttempt(RETRY_DELAY_MS)
             return
         }
@@ -435,10 +455,14 @@ class FludAutoStartService : AccessibilityService() {
     }
 
 
-    private fun mainTorrentListProbe(root: AccessibilityNodeInfo): Pair<Boolean, String> {
+    private fun mainTorrentListProbe(root: AccessibilityNodeInfo): TorrentListSnapshot {
         val summary = screenSummary(root)
-        if (looksLikeTorrentFilePicker(summary)) return false to "torrent-file picker visible"
-        if (looksLikeMagnetConfirmation(summary)) return false to "Add torrent confirmation visible"
+        if (looksLikeTorrentFilePicker(summary)) {
+            return TorrentListSnapshot(false, null, 0, false, "torrent-file picker visible")
+        }
+        if (looksLikeMagnetConfirmation(summary)) {
+            return TorrentListSnapshot(false, null, 0, false, "Add torrent confirmation visible")
+        }
 
         val emptyMarkers = listOf(
             "no torrents", "no torrent", "no downloads", "nothing here",
@@ -448,7 +472,13 @@ class FludAutoStartService : AccessibilityService() {
             "keine torrents", "keine downloads"
         )
         if (emptyMarkers.any { summary.contains(it) }) {
-            return true to "main torrent list ready: explicit empty-library state"
+            return TorrentListSnapshot(
+                readyCandidate = true,
+                signature = "empty-library",
+                titleCount = 0,
+                explicitEmpty = true,
+                diagnostic = "main torrent list candidate: explicit empty-library state"
+            )
         }
 
         val rootBounds = Rect().also { root.getBoundsInScreen(it) }
@@ -461,9 +491,10 @@ class FludAutoStartService : AccessibilityService() {
             "add", "add torrent", "torrents", "download", "downloads", "upload", "uploads",
             "labels", "categories", "peers", "trackers", "files", "information"
         )
-        val labels = linkedSetOf<String>()
+
         var listContainerSeen = false
-        var labelsInsideList = 0
+        val rowBestLabel = linkedMapOf<String, Pair<String, Int>>()
+        val fallbackLabels = linkedSetOf<String>()
 
         for (node in nodes) {
             val cls = node.className?.toString()?.lowercase(Locale.US).orEmpty()
@@ -473,13 +504,15 @@ class FludAutoStartService : AccessibilityService() {
 
             val raw = sequenceOf(node.text?.toString(), node.contentDescription?.toString())
                 .filterNotNull().map { it.trim() }.firstOrNull { it.isNotBlank() } ?: continue
-            if (raw.length < 6 || raw.length > 220) continue
+            if (raw.length < 5 || raw.length > 220) continue
+
             val normalized = normalize(raw)
             if (normalized in noise) continue
-            if (noise.any { n -> normalized == n || normalized.startsWith("$n ") && normalized.length < n.length + 8 }) continue
-            if (normalized.matches(Regex("^[0-9 .,%:/+-]+$"))) continue
+            if (noise.any { n -> normalized == n || (normalized.startsWith("$n ") && normalized.length < n.length + 8) }) continue
+            if (normalized.matches(Regex("^[0-9 .,%:/+\\-]+$"))) continue
             if (normalized.contains("mb/s") || normalized.contains("kb/s") || normalized.contains("gb/s")) continue
             if (normalized.contains("eta ") || normalized.startsWith("eta")) continue
+            if (normalized.contains("seeders") || normalized.contains("leechers") || normalized.contains("peers")) continue
             if (raw.count { it.isLetter() } < 4) continue
 
             val bounds = Rect().also { node.getBoundsInScreen(it) }
@@ -489,28 +522,63 @@ class FludAutoStartService : AccessibilityService() {
                 if (bounds.centerX() > leftLimit || bounds.centerY() < topLimit) continue
             }
 
-            val insideList = isInsideListContainer(node)
-            if (insideList) labelsInsideList += 1
-            if (insideList || raw.length >= 14) labels += raw.take(120)
+            val rowKey = listRowKey(node)
+            if (rowKey != null) {
+                val titleScore = raw.count { it.isLetter() } * 3 + raw.length.coerceAtMost(100)
+                val previous = rowBestLabel[rowKey]
+                if (previous == null || titleScore > previous.second) {
+                    rowBestLabel[rowKey] = normalized to titleScore
+                }
+            } else if (!listContainerSeen && raw.length >= 12) {
+                fallbackLabels += normalized
+            }
         }
 
-        val ready = (listContainerSeen && labelsInsideList >= 1 && labels.isNotEmpty()) || labels.size >= 2
-        val sample = labels.take(3).joinToString(" | ")
-        val diagnostic = "listContainer=$listContainerSeen, insideListLabels=$labelsInsideList, titleLabels=${labels.size}" +
-            if (sample.isBlank()) "" else ", sample=$sample"
-        return ready to diagnostic
+        val structuralLabels = if (rowBestLabel.isNotEmpty()) {
+            rowBestLabel.values.map { it.first }.distinct().sorted()
+        } else {
+            fallbackLabels.toList().distinct().sorted()
+        }
+
+        val strongRows = rowBestLabel.size
+        val fallbackReady = !listContainerSeen && structuralLabels.size >= 2
+        val ready = strongRows >= 1 || fallbackReady
+        val signature = if (ready) {
+            val basis = structuralLabels.joinToString("\u001f")
+            val prefix = if (strongRows >= 1) "rows" else "fallback"
+            "$prefix:${Integer.toHexString(basis.hashCode())}:${structuralLabels.size}"
+        } else {
+            null
+        }
+
+        val diagnostic = "listContainer=$listContainerSeen, structuralRows=$strongRows, titleCount=${structuralLabels.size}, signature=${signature ?: "none"}"
+        return TorrentListSnapshot(
+            readyCandidate = ready,
+            signature = signature,
+            titleCount = structuralLabels.size,
+            explicitEmpty = false,
+            diagnostic = diagnostic
+        )
     }
 
-    private fun isInsideListContainer(node: AccessibilityNodeInfo): Boolean {
-        var current: AccessibilityNodeInfo? = node.parent
+    private fun listRowKey(node: AccessibilityNodeInfo): String? {
+        var current: AccessibilityNodeInfo? = node
         var depth = 0
-        while (current != null && depth < 7) {
-            val cls = current.className?.toString()?.lowercase(Locale.US).orEmpty()
-            if (cls.contains("recyclerview") || cls.contains("listview")) return true
-            current = current.parent
+        while (current != null && depth < 8) {
+            val parent = current.parent ?: return null
+            val parentClass = parent.className?.toString()?.lowercase(Locale.US).orEmpty()
+            if (parentClass.contains("recyclerview") || parentClass.contains("listview")) {
+                val bounds = Rect().also { current.getBoundsInScreen(it) }
+                return if (bounds.isEmpty) {
+                    "row-depth-$depth-${current.hashCode()}"
+                } else {
+                    "${bounds.left}:${bounds.top}:${bounds.right}:${bounds.bottom}"
+                }
+            }
+            current = parent
             depth += 1
         }
-        return false
+        return null
     }
 
     private fun looksLikeTorrentFilePicker(summary: String): Boolean {

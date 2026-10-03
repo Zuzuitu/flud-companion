@@ -15,8 +15,8 @@ android {
         applicationId = "media.alexlab.fludremote"
         minSdk = 23
         targetSdk = 33
-        versionCode = 39
-        versionName = "0.24.8"
+        versionCode = 40
+        versionName = "0.24.9"
     }
 
     buildTypes {
@@ -60,4 +60,5 @@ android {
 dependencies {
     implementation("com.google.zxing:core:3.5.4")
     implementation("com.squareup.okhttp3:okhttp:5.3.0")
+    testImplementation("junit:junit:4.13.2")
 }
