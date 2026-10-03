@@ -23,15 +23,11 @@ import java.util.concurrent.atomic.AtomicBoolean
  * Optional helper used only after an explicit LAN or Remote command requests auto-start.
  *
  * v11 guarded strategy:
- *  1. Arm the helper before the magnet intent is launched, so slow/cold Flud starts do not
- *     lose the first accessibility events.
- *  2. Wait up to 20 seconds and keep scanning for a high-confidence confirmation control.
- *  3. Never treat Flud's generic main-screen Add/FAB as a confirmation button. This avoids
- *     accidentally opening the ".torrent file" picker while a magnet is still loading.
- *  4. If the torrent-file picker is detected during an armed request, back out once and
- *     continue waiting for the magnet confirmation screen.
- *  5. Use Right -> Right -> OK only as a late fallback, after Flud has had ample time to
- *     render the magnet UI.
+ *  1. The coordinator first waits for structural torrent-list stability.
+ *  2. Exactly one magnet or .torrent-file handoff is then issued.
+ *  3. Never treat Flud's generic main-screen Add/FAB as the final confirmation button.
+ *  4. After handoff, do not use Back, app reopen, or payload re-handoff as recovery.
+ *  5. Confirm only the real Add torrent screen, with guarded semantic/D-pad/gesture fallbacks.
  */
 class FludAutoStartService : AccessibilityService() {
     companion object {
@@ -316,8 +312,8 @@ class FludAutoStartService : AccessibilityService() {
 
         val screenText = screenSummary(root)
         if (looksLikeTorrentFilePicker(screenText)) {
-            // v9 has no recovery navigation after magnet dispatch. If Flud still exposes
-            // the wrong picker, leave the task untouched rather than risking an app exit.
+            // Post-handoff recovery navigation is forbidden. If Flud exposes the wrong
+            // picker, leave the task untouched rather than risking an app exit or duplicate handoff.
             lastStatus = "Unexpected torrent-file picker after safe handoff"
             lastDiagnostic = "No Back, no app reopen and no magnet retry are allowed after the v11 handoff"
             scheduleAttempt(RETRY_DELAY_MS)
