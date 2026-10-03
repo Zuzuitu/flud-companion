@@ -24,4 +24,6 @@ The Bridge polls outbound over HTTPS, so port `8765` does not need to be exposed
 
 `Remote PWA → Worker/R2 mailbox → Bridge outbound poll → Flud`
 
-Only one command slot is queued/inflight at a time. Magnet sends include a request ID so transient browser/mobile-network retries are idempotent and do not intentionally duplicate an accepted command.
+Only one command slot is queued/inflight at a time. Magnet and `.torrent` sends use request IDs so transient browser/mobile-network retries are idempotent and do not intentionally duplicate an accepted command.
+
+Remote `.torrent` payloads are stored only temporarily in the user's existing R2 mailbox, fetched by the authenticated Android Bridge, and deleted after the command result. The maximum accepted `.torrent` size is 5 MB.

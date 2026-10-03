@@ -7,7 +7,7 @@
 3. Keep the phone and Android device on the same local network.
 4. Scan **Local QR** with the phone camera.
 5. The local Web Companion opens at `http://<android-device-ip>:8765/app` and stores the LAN token only in that browser.
-6. Paste a magnet and choose **Send to Flud**.
+6. Paste a magnet link or choose a `.torrent` file, then select **Send to Flud**.
 
 No cloud account, VPN, inbound port or relay is required for LAN-only use.
 
@@ -22,6 +22,6 @@ No cloud account, VPN, inbound port or relay is required for LAN-only use.
 
 ## Optional Auto-start download
 
-Enable **Flud Companion Auto-start** in Android Accessibility if you want the Bridge to confirm Flud's add-torrent screen automatically. The helper acts only after an explicit LAN or Remote auto-start request and only targets Flud/Flud+.
+Enable **Flud Companion Auto-start** in Android Accessibility if you want the Bridge to confirm Flud's add-torrent screen automatically. The helper works with both magnet links and `.torrent` files, acts only after an explicit LAN or Remote auto-start request, and only targets Flud/Flud+.
 
 Keep pairing QR codes and tokens private.

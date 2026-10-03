@@ -32,22 +32,31 @@ The validated Auto-start behavior is safety-critical.
 
 Current strategy:
 
-`semantic-v10+torrent-list-ready+single-handoff+strict-confirmation`
+`semantic-v11+structural-list-stability+preflight-reopen+single-handoff+strict-confirmation`
 
 When Auto-start is requested:
 
-1. If Flud's real torrent list is already visible, use the fast path.
-2. Otherwise open Flud normally without handing the magnet over yet.
-3. Wait for the real torrent list or explicit empty-library state.
-4. Require a short stable-readiness debounce.
-5. Hand the magnet over exactly once.
-6. After handoff, never use Back, app reopen, or magnet re-handoff as recovery.
-7. Never click a generic main-screen Add/FAB.
-8. Confirm only the real Add torrent screen.
+1. Do not trust the first visible torrent title as readiness.
+2. Observe the structural fingerprint of visible torrent rows.
+3. Reset the readiness clock every time that fingerprint changes.
+4. Warm Flud may pass after about 900 ms of structural stability; cold/restoring Flud requires about 3.5 seconds and at least 3 stable samples.
+5. If Flud disappears before magnet handoff, preflight may reopen it safely because the magnet is still local and unsent.
+6. A second explicit send of the same still-pending magnet may refresh/restart preflight; it must not create a duplicate handoff.
+7. Recheck the exact structural fingerprint immediately before dispatch.
+8. Hand the magnet over exactly once.
+9. After handoff, never use Back, app reopen, or magnet re-handoff as recovery.
+10. Never click a generic main-screen Add/FAB.
+11. Confirm only the real Add torrent screen.
 
-Do not replace this with a fixed 30/45/60-second cold-start timer.
+The preflight timeout is 180 seconds. Maximum pre-handoff recovery opens is 2.
 
-Do not claim an Auto-start regression is fixed until it is validated on real target hardware when the bug is hardware/startup-timing dependent.
+Do not replace structural readiness with a fixed 30/45/60-second cold-start timer.
+
+Do not claim an Auto-start regression is fixed until it is validated on real target hardware when the bug is hardware/startup-timing dependent. A previously successful run does not make future contradictory hardware evidence invalid; investigate new regressions from repository truth and observed state transitions.
+
+## Relay UI
+
+The self-hosted relay setup page must remain readable on small/mobile screens. Keep numbered steps in a stable number column plus a flexible text column; do not allow emphasized phrases such as `Quick setup -> LAN + Remote` or `Remote QR` to collapse into a narrow word-by-word column or overlap neighboring text.
 
 ## Signing
 
@@ -74,6 +83,7 @@ Before merging or publishing:
 - Treat a published release tag as immutable.
 - Never commit release binaries to the source tree.
 - Preserve GitHub Release assets and download counts.
+- Keep public release notes concise and user-facing. Do not narrate internal failed attempts unless they are materially relevant to security, compatibility, or user action.
 - Version-specific one-shot publication helpers may be temporary, but they must not remain as long-lived project machinery unless intentionally generalized.
 - Do not reintroduce READY/PUBLISHED/run-id marker files.
 

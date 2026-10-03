@@ -52,11 +52,13 @@ Keep the Remote QR and relay token private.
 
 Bridge:
 - `GET /bridge/poll/:deviceId`
+- `GET /bridge/file/:deviceId/:commandId` — authenticated temporary `.torrent` payload fetch
 - `POST /bridge/result/:deviceId`
 
 Client:
 - `GET /api/v1/device/:deviceId/status`
 - `POST /api/v1/device/:deviceId/magnet`
+- `POST /api/v1/device/:deviceId/torrent` — raw `.torrent` body, max 5 MB
 
 Web:
 - `GET /`
@@ -67,9 +69,13 @@ Web:
 - `GET /manifest.webmanifest`
 - `GET /sw.js`
 
+## Torrent file transport
+
+Remote `.torrent` uploads are stored only temporarily in the user's existing R2 mailbox. The Android Bridge copies the payload into private app cache, then the relay deletes the R2 object after the command result. No public inbound home port is added.
+
 ## Auto-start helper
 
-LAN and Remote controllers can request **Auto-start download**. This requires the optional Accessibility helper on the Android device. The helper first tries Flud's real confirmation control semantically; `Right → Right → OK` is only a D-pad compatibility fallback.
+LAN and Remote controllers can request **Auto-start download** for magnets or `.torrent` files. This requires the optional Accessibility helper on the Android device. The helper first tries Flud's real confirmation control semantically; `Right → Right → OK` is only a D-pad compatibility fallback.
 
 ---
 Flud Companion is an independent alexlab.media project. It is not affiliated with, endorsed by, or sponsored by Delphi Softwares or the developers of Flud. “Flud” is used only to identify compatibility.

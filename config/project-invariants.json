@@ -8,9 +8,9 @@
     "AGENTS.md"
   ],
   "current_release": {
-    "version_name": "0.24.9",
-    "version_code": 40,
-    "tag": "v0.24.9",
+    "version_name": "0.25.0",
+    "version_code": 43,
+    "tag": "v0.25.0",
     "application_id": "media.alexlab.fludremote"
   },
   "hard_invariants": {
@@ -34,7 +34,10 @@
     "autostart_no_magnet_rehandoff_after_handoff": true,
     "autostart_must_not_click_generic_main_screen_add_control": true,
     "autostart_requires_real_add_torrent_confirmation_before_final_action": true,
-    "accessibility_enabled_detection_must_keep_secure_settings_fallback": true
+    "accessibility_enabled_detection_must_keep_secure_settings_fallback": true,
+    "autostart_reopen_only_before_handoff": true,
+    "release_notes_are_concise_user_facing_summaries": true,
+    "remote_torrent_payloads_use_temporary_user_owned_r2_storage": true
   },
   "signing": {
     "certificate_sha256": "c0bbc7472b10c74325039bbf83c9bc2f92e3ff869eaf49599ed67cd546bb5998",
@@ -48,7 +51,14 @@
     "prehandoff_reopen_allowed": true,
     "final_readiness_recheck": true,
     "handoff_count": 1,
-    "prepare_timeout_ms": 120000
+    "prepare_timeout_ms": 180000,
+    "warm_stable_ms": 900,
+    "cold_stable_ms": 3500,
+    "min_stable_samples": 3,
+    "foreground_loss_before_reopen_ms": 1500,
+    "initial_launch_retry_ms": 8000,
+    "max_recovery_opens": 2,
+    "same_pending_magnet_retry_refreshes_preflight": true
   },
   "remote_relay": {
     "r2_binding": "MAILBOX",
@@ -62,5 +72,15 @@
     ".github/workflows/public-source-scan.yml",
     ".github/workflows/verify-signing.yml"
   ],
-  "known_technical_debt": []
+  "known_technical_debt": [],
+  "ui": {
+    "relay_mobile_steps_use_number_plus_flexible_text_columns": true,
+    "relay_setup_text_must_not_overlap_or_word_stack_on_small_screens": true
+  },
+  "torrent_file_handoff": {
+    "max_bytes": 5242880,
+    "client_filename_and_size_checks": true,
+    "bridge_metainfo_validation": true,
+    "remote_payload_storage": "temporary-user-owned-r2"
+  }
 }

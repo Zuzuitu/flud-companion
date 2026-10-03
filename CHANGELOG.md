@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.25.0 stable
+- Add direct `.torrent` file selection and sending from both LAN and Remote PWAs.
+- Improve iPhone/iPad Files compatibility when choosing `.torrent` files.
+- Support optional Auto-start for `.torrent` files using the same guarded v11 handoff path as magnet links.
+- Keep Remote `.torrent` payloads temporary in the user's existing self-hosted R2 mailbox.
+
 ## 0.24.9 stable
 - Improve Auto-start reliability during demanding Flud cold starts.
 - Improve the relay setup page layout on smaller screens.
