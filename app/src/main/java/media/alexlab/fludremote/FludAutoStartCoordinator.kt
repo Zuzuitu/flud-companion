@@ -78,7 +78,7 @@ object FludAutoStartCoordinator {
             if (!foreground) {
                 val opened = FludAutoStartService.openFludForPreflight(context, pkg)
                 if (!opened.success) {
-                    clearQueueLocked()
+                    clearQueueLocked(discardPayload = true)
                     return opened
                 }
                 openRequested = true
@@ -130,7 +130,7 @@ object FludAutoStartCoordinator {
         if (elapsed >= PREPARE_TIMEOUT_MS) {
             synchronized(lock) {
                 if (expectedGeneration != generation) return
-                clearQueueLocked()
+                clearQueueLocked(discardPayload = true)
             }
             FludAutoStartService.report(
                 "Flud preflight timed out",
@@ -155,7 +155,7 @@ object FludAutoStartCoordinator {
                 if (!reopened.success) {
                     synchronized(lock) {
                         if (expectedGeneration != generation) return
-                        clearQueueLocked()
+                        clearQueueLocked(discardPayload = true)
                     }
                     FludAutoStartService.report("Could not reopen Flud during preflight", reopened.message)
                     BridgePreferences.recordLastCommand(context, "Auto-start: ${reopened.message}", false)
@@ -173,7 +173,7 @@ object FludAutoStartCoordinator {
             FludPreflightGate.Decision.FAIL -> {
                 synchronized(lock) {
                     if (expectedGeneration != generation) return
-                    clearQueueLocked()
+                    clearQueueLocked(discardPayload = true)
                 }
                 FludAutoStartService.report(
                     "Flud could not stay open during preflight",
@@ -262,6 +262,7 @@ object FludAutoStartCoordinator {
                 "$reason; exactly one ${payload.label()} handoff was issued"
             )
         } else {
+            if (payload is PendingPayload.Torrent) TorrentFileSupport.delete(payload.value)
             FludAutoStartService.cancel("Flud ${payload.label()} handoff failed; auto-start cancelled")
         }
         return if (result.success) {
@@ -269,10 +270,14 @@ object FludAutoStartCoordinator {
         } else result
     }
 
-    private fun clearQueueLocked() {
+    private fun clearQueueLocked(discardPayload: Boolean = false) {
+        val payload = queuedPayload
         queuedPayload = null
         queuedPackage = null
         queuedAt = 0L
         generation += 1L
+        if (discardPayload && payload is PendingPayload.Torrent) {
+            TorrentFileSupport.delete(payload.value)
+        }
     }
 }
