@@ -45,7 +45,7 @@ No Tailscale or project-owned cloud account is required for Remote mode. Each us
 - Improved iPhone/iPad Files compatibility for selecting `.torrent` files.
 - Optional Auto-start works with both magnet links and `.torrent` files.
 
-See the [0.24.9 notes](docs/releases/v0.25.0.md), [release history](docs/releases/README.md) and full [CHANGELOG](CHANGELOG.md).
+See the [0.25.0 notes](docs/releases/v0.25.0.md), [release history](docs/releases/README.md) and full [CHANGELOG](CHANGELOG.md).
 
 ### Quick setup
 
