@@ -36,6 +36,20 @@ Compact lowercase form used by project invariants:
 
 The signing-verification workflow verifies the signed APK against this fingerprint and fails if the signing identity does not match.
 
+## Hardware release candidates
+
+Hardware candidates must use the same permanent production signing identity as public releases when they are installed over an existing Flud Companion installation. A debug APK is suitable for CI compilation checks, but it cannot replace a production-signed installation without uninstalling the app first.
+
+For a Shield/Android TV hardware candidate:
+
+- keep the candidate version code higher than the installed public release;
+- build the release variant only through the existing signing-verification workflow or an equivalent environment that supplies the repository signing secrets without exposing them;
+- require the permanent certificate SHA-256 check to pass before using the APK for an in-place hardware test;
+- treat the resulting APK as a test candidate, not as a public GitHub Release;
+- do not create or move a release tag until hardware validation is complete and the owner explicitly approves publication.
+
+The verification workflow may upload the verified signed APK as a GitHub Actions artifact for hardware testing. That artifact must not be committed into the source tree.
+
 ## Signing continuity
 
 Users can install updates over an existing release only when the APK is signed with the same signing identity. Back up the production key securely outside the repository before publishing signed builds. Losing the key means installations signed with it cannot be updated by a differently signed APK.
