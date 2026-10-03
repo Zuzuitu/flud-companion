@@ -4,7 +4,7 @@ The repository must never contain an Android signing keystore or its passwords.
 
 ## Debug builds
 
-GitHub Actions builds the debug APK with Android's generated debug signing key. This is suitable for CI validation and beta development, not for maintaining a production signing identity.
+GitHub Actions builds the debug APK with Android's generated debug signing key. This is suitable for CI validation and development, not for maintaining the production signing identity.
 
 ## Release builds
 
@@ -15,7 +15,7 @@ GitHub Actions builds the debug APK with Android's generated debug signing key. 
 - `FLUD_SIGNING_KEY_ALIAS`
 - `FLUD_SIGNING_KEY_PASSWORD`
 
-The GitHub release workflow reconstructs the keystore at runtime from the repository secret `FLUD_SIGNING_KEYSTORE_BASE64`, then supplies the remaining signing values through repository secrets. The keystore itself and its passwords must never be committed.
+The signing-verification workflow reconstructs the keystore at runtime from the repository secret `FLUD_SIGNING_KEYSTORE_BASE64`, then supplies the remaining signing values through repository secrets. The keystore itself and its passwords must never be committed.
 
 Required GitHub Actions repository secrets:
 
@@ -30,8 +30,18 @@ The permanent signing certificate selected for the first public beta has SHA-256
 
 `C0:BB:C7:47:2B:10:C7:43:25:03:9B:BF:83:C9:BC:2F:92:E3:FF:86:9E:AF:49:59:9E:D6:7C:D5:46:BB:59:98`
 
-The release workflow verifies the signed APK against this fingerprint and refuses publication if the signing identity does not match.
+Compact lowercase form used by project invariants:
+
+`c0bbc7472b10c74325039bbf83c9bc2f92e3ff869eaf49599ed67cd546bb5998`
+
+The signing-verification workflow verifies the signed APK against this fingerprint and fails if the signing identity does not match.
 
 ## Signing continuity
 
 Users can install updates over an existing release only when the APK is signed with the same signing identity. Back up the production key securely outside the repository before publishing signed builds. Losing the key means installations signed with it cannot be updated by a differently signed APK.
+
+## Repository hygiene
+
+Signing verification is read-only with respect to source history. CI must not commit run IDs, READY/PUBLISHED markers, generated signing status files, or other bookkeeping back to `main`.
+
+Actual secret values, keystore files, and private backups must remain outside the public repository.
