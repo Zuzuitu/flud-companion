@@ -152,7 +152,7 @@ class MainActivity : Activity() {
             letterSpacing = 0.16f
         })
         brandText.addView(TextView(this).apply {
-            text = "Bridge 0.24.0"
+            text = "Bridge ${BuildConfig.VERSION_NAME}"
             textSize = 12f
             setTextColor(Color.parseColor("#56636D"))
             setPadding(0, dp(4), 0, 0)
