@@ -3,12 +3,14 @@ package media.alexlab.fludremote
 import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.AccessibilityServiceInfo
 import android.accessibilityservice.GestureDescription
+import android.content.ComponentName
 import android.content.Context
 import android.graphics.Path
 import android.graphics.Rect
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.provider.Settings
 import android.view.View
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityManager
@@ -33,16 +35,20 @@ import java.util.concurrent.atomic.AtomicBoolean
  */
 class FludAutoStartService : AccessibilityService() {
     companion object {
-        private const val REQUEST_WINDOW_MS = 30_000L
-        private const val REHANDOFF_GRACE_MS = 10_500L
-        private const val CONFIRMATION_FALLBACK_GRACE_MS = 900L
-        private const val GESTURE_FALLBACK_GRACE_MS = 1_600L
-        private const val GESTURE_VERIFY_DELAY_MS = 650L
+        private const val REQUEST_WINDOW_MS = 120_000L
+        private const val MIN_REHANDOFF_ELAPSED_MS = 50_000L
+        private const val FORCE_REHANDOFF_ELAPSED_MS = 80_000L
+        private const val FLUD_QUIET_BEFORE_REHANDOFF_MS = 5_000L
+        private const val MAX_REHANDOFF_ATTEMPTS = 1
+        private const val CONFIRMATION_FALLBACK_GRACE_MS = 3_000L
+        private const val GESTURE_FALLBACK_GRACE_MS = 4_500L
+        private const val GESTURE_VERIFY_DELAY_MS = 900L
+        private const val CONFIRMATION_QUIET_MS = 2_500L
         private const val RETRY_DELAY_MS = 360L
         private const val CLICK_DELAY_MS = 190L
         private const val MAX_SCAN_NODES = 220
         private const val SEMANTIC_SCORE_THRESHOLD = 8
-        private const val STRATEGY = "semantic-v4+screen-gated-gesture+single-rehandoff"
+        private const val STRATEGY = "semantic-v10+torrent-list-ready+single-handoff+strict-confirmation"
 
         @Volatile private var pendingUntil = 0L
         @Volatile private var pendingSince = 0L
@@ -53,6 +59,8 @@ class FludAutoStartService : AccessibilityService() {
         @Volatile private var filePickerRecoveries = 0
         @Volatile private var confirmationSeenAt = 0L
         @Volatile private var rehandoffAttempts = 0
+        @Volatile private var lastFludEventAt = 0L
+        @Volatile private var lastObservedFludEventAt = 0L
         private val attemptScheduled = AtomicBoolean(false)
         private val gestureFallbackInFlight = AtomicBoolean(false)
 
@@ -63,6 +71,7 @@ class FludAutoStartService : AccessibilityService() {
             filePickerRecoveries = 0
             confirmationSeenAt = 0L
             rehandoffAttempts = 0
+            lastFludEventAt = pendingSince
             gestureFallbackInFlight.set(false)
             lastStatus = "Armed - waiting for Flud magnet confirmation"
             lastDiagnostic = "Guarded semantic scan pending"
@@ -78,17 +87,108 @@ class FludAutoStartService : AccessibilityService() {
         }
 
         fun isEnabled(context: Context): Boolean {
+            if (activeService != null) return true
+
+            val expected = ComponentName(context, FludAutoStartService::class.java)
             val manager = context.getSystemService(Context.ACCESSIBILITY_SERVICE) as AccessibilityManager
-            return manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
-                .any {
-                    val info = it.resolveInfo?.serviceInfo
-                    info?.packageName == context.packageName && info.name == FludAutoStartService::class.java.name
-                }
+
+            val listed = try {
+                manager.getEnabledAccessibilityServiceList(AccessibilityServiceInfo.FEEDBACK_ALL_MASK)
+                    .any { entry ->
+                        val info = entry.resolveInfo?.serviceInfo ?: return@any false
+                        val rawName = info.name.orEmpty()
+                        val fullName = when {
+                            rawName.startsWith(".") -> info.packageName + rawName
+                            rawName.contains('.') -> rawName
+                            rawName.isNotBlank() -> info.packageName + "." + rawName
+                            else -> ""
+                        }
+                        info.packageName == expected.packageName && fullName == expected.className
+                    }
+            } catch (_: Exception) {
+                false
+            }
+            if (listed) return true
+
+            // Android TV builds can keep the service enabled in Settings while the
+            // AccessibilityManager list is stale or reports a relative service name.
+            // Fall back to the authoritative secure setting used by the system UI.
+            return try {
+                val accessibilityOn = Settings.Secure.getInt(
+                    context.contentResolver,
+                    Settings.Secure.ACCESSIBILITY_ENABLED,
+                    0
+                ) == 1
+                if (!accessibilityOn) return false
+
+                val enabled = Settings.Secure.getString(
+                    context.contentResolver,
+                    Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+                ).orEmpty()
+
+                enabled.split(':')
+                    .mapNotNull { ComponentName.unflattenFromString(it.trim()) }
+                    .any { component ->
+                        component.packageName == expected.packageName &&
+                            component.className == expected.className
+                    }
+            } catch (_: Exception) {
+                false
+            }
         }
 
         fun status(): String = lastStatus
         fun diagnostic(): String = lastDiagnostic
         fun strategy(): String = STRATEGY
+
+        fun report(status: String, diagnostic: String) {
+            lastStatus = status
+            lastDiagnostic = diagnostic
+        }
+
+        fun isFludForeground(packageName: String?): Boolean {
+            val service = activeService ?: return false
+            val root = try { service.rootInActiveWindow } catch (_: Exception) { null } ?: return false
+            val rootPackage = root.packageName?.toString()
+            return !packageName.isNullOrBlank() && rootPackage == packageName
+        }
+
+        fun isFludMainScreenQuiet(packageName: String?, quietMs: Long): Boolean {
+            val service = activeService ?: return false
+            val root = try { service.rootInActiveWindow } catch (_: Exception) { null } ?: return false
+            val rootPackage = root.packageName?.toString()
+            if (packageName.isNullOrBlank() || rootPackage != packageName) return false
+
+            val observed = lastObservedFludEventAt
+            val now = System.currentTimeMillis()
+            if (observed <= 0L || now - observed < quietMs) return false
+
+            val summary = try { service.screenSummary(root) } catch (_: Exception) { return false }
+            if (service.looksLikeTorrentFilePicker(summary)) return false
+            if (service.looksLikeMagnetConfirmation(summary)) return false
+            return true
+        }
+
+        fun isFludTorrentListReady(packageName: String?): Boolean {
+            val service = activeService ?: return false
+            val root = try { service.rootInActiveWindow } catch (_: Exception) { null } ?: return false
+            val rootPackage = root.packageName?.toString()
+            if (packageName.isNullOrBlank() || rootPackage != packageName) return false
+            return try { service.mainTorrentListProbe(root).first } catch (_: Exception) { false }
+        }
+
+        fun torrentListDiagnostic(packageName: String?): String {
+            val service = activeService ?: return "Accessibility service not connected"
+            val root = try { service.rootInActiveWindow } catch (_: Exception) { null }
+                ?: return "No active Flud window"
+            val rootPackage = root.packageName?.toString()
+            if (packageName.isNullOrBlank() || rootPackage != packageName) {
+                return "Flud is not the active window"
+            }
+            return try { service.mainTorrentListProbe(root).second } catch (e: Exception) {
+                "Torrent-list probe failed: ${e.javaClass.simpleName}"
+            }
+        }
 
         private fun clear(status: String, diagnostic: String? = null) {
             pendingUntil = 0L
@@ -97,6 +197,7 @@ class FludAutoStartService : AccessibilityService() {
             filePickerRecoveries = 0
             confirmationSeenAt = 0L
             rehandoffAttempts = 0
+            lastFludEventAt = 0L
             gestureFallbackInFlight.set(false)
             lastStatus = status
             if (!diagnostic.isNullOrBlank()) lastDiagnostic = diagnostic
@@ -129,10 +230,18 @@ class FludAutoStartService : AccessibilityService() {
     }
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
-        if (!hasPendingRequest()) return
         val pkg = event?.packageName?.toString()
+        val now = System.currentTimeMillis()
+        if (pkg == FludLauncher.FREE_PACKAGE || pkg == FludLauncher.PAID_PACKAGE) {
+            lastObservedFludEventAt = now
+        }
+
+        if (!hasPendingRequest()) return
         val expected = pendingPackage
         if (!expected.isNullOrBlank() && !pkg.isNullOrBlank() && pkg != expected) return
+        if (!pkg.isNullOrBlank() && (expected.isNullOrBlank() || pkg == expected)) {
+            lastFludEventAt = now
+        }
         scheduleAttempt(220L)
     }
 
@@ -178,34 +287,23 @@ class FludAutoStartService : AccessibilityService() {
 
         val screenText = screenSummary(root)
         if (looksLikeTorrentFilePicker(screenText)) {
-            if (filePickerRecoveries < 1) {
-                filePickerRecoveries += 1
-                lastStatus = "Wrong Flud file picker detected - returning to magnet flow"
-                lastDiagnostic = "Detected .torrent file picker during auto-start; sent Back and scheduled one controlled magnet re-handoff"
-                try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { }
-                handler.postDelayed({
-                    if (!hasPendingRequest() || rehandoffAttempts >= 1) return@postDelayed
-                    rehandoffAttempts += 1
-                    val retry = FludLauncher.relaunchLastMagnet(this)
-                    if (retry?.success == true) {
-                        retarget(retry.packageName)
-                        lastStatus = "Recovered from file picker - magnet handed to Flud again once"
-                        lastDiagnostic = "File-picker recovery used one controlled magnet re-handoff"
-                    } else {
-                        lastStatus = "File picker closed - waiting for Flud magnet screen"
-                    }
-                    scheduleAttempt(900L)
-                }, 2_500L)
-            } else {
-                lastStatus = "Waiting for Flud magnet screen after file-picker recovery"
-                scheduleAttempt(RETRY_DELAY_MS)
-            }
+            // v9 has no recovery navigation after magnet dispatch. If Flud still exposes
+            // the wrong picker, leave the task untouched rather than risking an app exit.
+            lastStatus = "Unexpected torrent-file picker after safe handoff"
+            lastDiagnostic = "No Back, no app reopen and no magnet retry are allowed in v9"
+            scheduleAttempt(RETRY_DELAY_MS)
             return
         }
 
         val now = System.currentTimeMillis()
         val confirmationScreen = looksLikeMagnetConfirmation(screenText)
-        if (confirmationScreen && confirmationSeenAt <= 0L) confirmationSeenAt = now
+        if (confirmationScreen && confirmationSeenAt <= 0L) {
+            confirmationSeenAt = now
+            // Navigation lock: from here on this request may only confirm the existing Add torrent
+            // screen. No more re-handoff and no Back recovery are allowed.
+            rehandoffAttempts = MAX_REHANDOFF_ATTEMPTS
+            lastDiagnostic = "Add torrent detected - navigation locked; only final confirmation is allowed"
+        }
 
         if (confirmationScreen) {
             val action = confirmationActionCandidate(root)
@@ -226,56 +324,49 @@ class FludAutoStartService : AccessibilityService() {
             }
         }
 
-        val candidates = semanticCandidates(root)
-        lastDiagnostic = diagnosticSummary(candidates)
-        val best = candidates.firstOrNull { it.score >= SEMANTIC_SCORE_THRESHOLD }
-        if (best != null) {
-            val clicked = try {
-                best.clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
-            } catch (_: Exception) {
-                false
+        if (confirmationScreen) {
+            val candidates = semanticCandidates(root)
+            lastDiagnostic = diagnosticSummary(candidates)
+            val best = candidates.firstOrNull { it.score >= SEMANTIC_SCORE_THRESHOLD }
+            if (best != null) {
+                val clicked = try {
+                    best.clickable.performAction(AccessibilityNodeInfo.ACTION_CLICK)
+                } catch (_: Exception) {
+                    false
+                }
+                if (clicked) {
+                    val readable = best.label.ifBlank { best.viewId.ifBlank { best.className } }
+                    clear(
+                        "Auto-start completed semantically",
+                        "Clicked guarded confirmation: ${readable.take(120)} (score ${best.score})"
+                    )
+                    return
+                }
+                lastStatus = "Confirmation found; waiting for it to become clickable"
             }
-            if (clicked) {
-                val readable = best.label.ifBlank { best.viewId.ifBlank { best.className } }
-                clear(
-                    "Auto-start completed semantically",
-                    "Clicked guarded confirmation: ${readable.take(120)} (score ${best.score})"
-                )
-                return
-            }
-            lastStatus = "Confirmation found; waiting for it to become clickable"
         }
 
         if (!confirmationScreen) {
-            val elapsed = now - pendingSince
-            if (elapsed >= REHANDOFF_GRACE_MS && rehandoffAttempts < 1) {
-                rehandoffAttempts += 1
-                val retry = FludLauncher.relaunchLastMagnet(this)
-                if (retry?.success == true) {
-                    retarget(retry.packageName)
-                    lastStatus = "Slow Flud start detected - magnet handed to Flud again once"
-                    lastDiagnostic = "No Add torrent screen after ${elapsed}ms; used one controlled magnet re-handoff"
-                    scheduleAttempt(900L)
-                    return
-                }
-            }
-            lastStatus = if (elapsed < REHANDOFF_GRACE_MS) {
-                "Flud is still settling - waiting for the real Add torrent screen"
+            // The coordinator already waited for Flud to settle before issuing exactly one
+            // magnet intent. Never navigate or re-send from the Accessibility service.
+            lastStatus = if (confirmationSeenAt > 0L) {
+                "Add torrent was detected - waiting for it to become visible again"
             } else {
-                "Waiting for the real Flud Add torrent screen"
+                "Magnet sent once - waiting for the real Flud Add torrent screen"
             }
             scheduleAttempt(RETRY_DELAY_MS)
             return
         }
 
         val confirmationElapsed = now - confirmationSeenAt
-        if (confirmationElapsed < CONFIRMATION_FALLBACK_GRACE_MS) {
-            lastStatus = "Add torrent screen detected - waiting for confirmation control"
+        val confirmationQuietFor = (now - lastFludEventAt).coerceAtLeast(0L)
+        if (confirmationElapsed < CONFIRMATION_FALLBACK_GRACE_MS || confirmationQuietFor < CONFIRMATION_QUIET_MS) {
+            lastStatus = "Add torrent detected - waiting for metadata and controls to settle"
             scheduleAttempt(RETRY_DELAY_MS)
             return
         }
 
-        // D-pad fallback is now allowed ONLY after the real Add torrent screen is detected.
+        // D-pad/gesture fallback is allowed only after the real Add torrent screen is stable.
         attemptFocusFallback(root)
     }
 
@@ -343,6 +434,85 @@ class FludAutoStartService : AccessibilityService() {
         }.filterNotNull().filter { it.isNotBlank() }.take(200).joinToString(" | ") { normalize(it) }.take(6000)
     }
 
+
+    private fun mainTorrentListProbe(root: AccessibilityNodeInfo): Pair<Boolean, String> {
+        val summary = screenSummary(root)
+        if (looksLikeTorrentFilePicker(summary)) return false to "torrent-file picker visible"
+        if (looksLikeMagnetConfirmation(summary)) return false to "Add torrent confirmation visible"
+
+        val emptyMarkers = listOf(
+            "no torrents", "no torrent", "no downloads", "nothing here",
+            "nessun torrent", "nessun download", "nessun elemento",
+            "niciun torrent", "niciun download", "nu exista torrente",
+            "aucun torrent", "aucun telechargement",
+            "keine torrents", "keine downloads"
+        )
+        if (emptyMarkers.any { summary.contains(it) }) {
+            return true to "main torrent list ready: explicit empty-library state"
+        }
+
+        val rootBounds = Rect().also { root.getBoundsInScreen(it) }
+        val nodes = ArrayList<AccessibilityNodeInfo>()
+        collectNodes(root, nodes)
+
+        val noise = setOf(
+            "flud", "all", "active", "inactive", "downloading", "uploading", "seeding",
+            "completed", "finished", "paused", "queued", "settings", "search", "menu",
+            "add", "add torrent", "torrents", "download", "downloads", "upload", "uploads",
+            "labels", "categories", "peers", "trackers", "files", "information"
+        )
+        val labels = linkedSetOf<String>()
+        var listContainerSeen = false
+        var labelsInsideList = 0
+
+        for (node in nodes) {
+            val cls = node.className?.toString()?.lowercase(Locale.US).orEmpty()
+            if (cls.contains("recyclerview") || cls.contains("listview")) {
+                listContainerSeen = true
+            }
+
+            val raw = sequenceOf(node.text?.toString(), node.contentDescription?.toString())
+                .filterNotNull().map { it.trim() }.firstOrNull { it.isNotBlank() } ?: continue
+            if (raw.length < 6 || raw.length > 220) continue
+            val normalized = normalize(raw)
+            if (normalized in noise) continue
+            if (noise.any { n -> normalized == n || normalized.startsWith("$n ") && normalized.length < n.length + 8 }) continue
+            if (normalized.matches(Regex("^[0-9 .,%:/+-]+$"))) continue
+            if (normalized.contains("mb/s") || normalized.contains("kb/s") || normalized.contains("gb/s")) continue
+            if (normalized.contains("eta ") || normalized.startsWith("eta")) continue
+            if (raw.count { it.isLetter() } < 4) continue
+
+            val bounds = Rect().also { node.getBoundsInScreen(it) }
+            if (!rootBounds.isEmpty && !bounds.isEmpty) {
+                val leftLimit = rootBounds.left + (rootBounds.width() * 0.88f).toInt()
+                val topLimit = rootBounds.top + (rootBounds.height() * 0.08f).toInt()
+                if (bounds.centerX() > leftLimit || bounds.centerY() < topLimit) continue
+            }
+
+            val insideList = isInsideListContainer(node)
+            if (insideList) labelsInsideList += 1
+            if (insideList || raw.length >= 14) labels += raw.take(120)
+        }
+
+        val ready = (listContainerSeen && labelsInsideList >= 1 && labels.isNotEmpty()) || labels.size >= 2
+        val sample = labels.take(3).joinToString(" | ")
+        val diagnostic = "listContainer=$listContainerSeen, insideListLabels=$labelsInsideList, titleLabels=${labels.size}" +
+            if (sample.isBlank()) "" else ", sample=$sample"
+        return ready to diagnostic
+    }
+
+    private fun isInsideListContainer(node: AccessibilityNodeInfo): Boolean {
+        var current: AccessibilityNodeInfo? = node.parent
+        var depth = 0
+        while (current != null && depth < 7) {
+            val cls = current.className?.toString()?.lowercase(Locale.US).orEmpty()
+            if (cls.contains("recyclerview") || cls.contains("listview")) return true
+            current = current.parent
+            depth += 1
+        }
+        return false
+    }
+
     private fun looksLikeTorrentFilePicker(summary: String): Boolean {
         val phrases = listOf(
             "select a torrent file to add",
@@ -381,16 +551,18 @@ class FludAutoStartService : AccessibilityService() {
         )
         val tabPairSeen = tabPairs.any { (left, right) -> summary.contains(left) && summary.contains(right) }
         val detailMarkers = listOf(
-            "storage path", "torrent settings", "hash", "name", "download path",
-            "percorso", "impostazioni torrent", "nome",
-            "cale stocare", "setari torrent", "nume",
-            "emplacement", "parametres torrent", "nom",
-            "speicher", "torrent einstellungen", "name"
+            "storage path", "torrent settings", "download path", "hash", "size",
+            "percorso", "impostazioni torrent", "dimensione",
+            "cale stocare", "setari torrent", "dimensiune",
+            "emplacement", "parametres torrent", "taille",
+            "speicher", "torrent einstellungen", "grosse"
         )
         val detailCount = detailMarkers.count { summary.contains(it) }
 
-        return (titleSeen && (tabPairSeen || detailCount >= 1)) ||
-            (tabPairSeen && detailCount >= 1)
+        // The main Flud screen may expose an Add torrent action while the torrent list is
+        // still loading. Never treat that as confirmation. The real magnet confirmation
+        // must expose the INFORMATION/FILES tab pair plus at least one torrent detail.
+        return tabPairSeen && detailCount >= 1
     }
 
     private fun confirmationActionCandidate(root: AccessibilityNodeInfo): Candidate? {
@@ -545,12 +717,9 @@ class FludAutoStartService : AccessibilityService() {
                 return@postDelayed
             }
             if (looksLikeTorrentFilePicker(screenSummary(freshRoot))) {
-                lastStatus = "File picker appeared before OK — recovering"
-                if (filePickerRecoveries < 1) {
-                    filePickerRecoveries += 1
-                    try { performGlobalAction(GLOBAL_ACTION_BACK) } catch (_: Exception) { }
-                }
-                scheduleAttempt(750L)
+                lastStatus = "File picker appeared after Add torrent - navigation lock kept it untouched"
+                lastDiagnostic = "$lastDiagnostic | no Back after confirmation lock"
+                scheduleAttempt(RETRY_DELAY_MS)
                 return@postDelayed
             }
             val focusedNow = freshRoot?.findFocus(AccessibilityNodeInfo.FOCUS_INPUT)
@@ -573,7 +742,9 @@ class FludAutoStartService : AccessibilityService() {
         if (!looksLikeMagnetConfirmation(screenSummary(root))) return false
 
         val seenAt = confirmationSeenAt
-        if (seenAt <= 0L || System.currentTimeMillis() - seenAt < GESTURE_FALLBACK_GRACE_MS) return false
+        val now = System.currentTimeMillis()
+        if (seenAt <= 0L || now - seenAt < GESTURE_FALLBACK_GRACE_MS) return false
+        if (now - lastFludEventAt < CONFIRMATION_QUIET_MS) return false
         if (!gestureFallbackInFlight.compareAndSet(false, true)) return true
 
         val bounds = Rect().also { root.getBoundsInScreen(it) }

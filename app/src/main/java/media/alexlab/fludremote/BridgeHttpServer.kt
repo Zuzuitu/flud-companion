@@ -21,7 +21,7 @@ class BridgeHttpServer(
     companion object {
         private const val MAX_HEADER_BYTES = 16 * 1024
         private const val MAX_BODY_BYTES = 16 * 1024
-        const val VERSION = "0.24.1"
+        const val VERSION = "0.24.6"
     }
 
     private val running = AtomicBoolean(false)
@@ -225,18 +225,14 @@ class BridgeHttpServer(
 
                         val autoStart = extractAutoStart(body, headers["content-type"])
                         val helperReady = autoStart && FludAutoStartService.isEnabled(context)
-                        if (helperReady) {
-                            // Arm BEFORE launching Flud so a cold/slow start cannot race past the helper.
-                            FludAutoStartService.request(FludLauncher.installedPackage(context))
-                        }
-                        val result = FludLauncher.launchMagnet(context, magnet.trim())
-                        if (helperReady) {
-                            if (result.success) FludAutoStartService.retarget(result.packageName)
-                            else FludAutoStartService.cancel("Flud launch failed; auto-start cancelled")
+                        val result = if (helperReady) {
+                            FludAutoStartCoordinator.submit(context, magnet.trim())
+                        } else {
+                            FludLauncher.launchMagnet(context, magnet.trim())
                         }
                         val resultMessage = if (result.success && autoStart) {
                             if (helperReady) {
-                                "${result.message}; guarded auto-start armed before Flud launch"
+                                result.message
                             } else {
                                 "${result.message}; auto-start requested but the accessibility helper is not enabled"
                             }

@@ -2,6 +2,19 @@
 
 This folder keeps the human-readable notes for Flud Companion public releases.
 
+## 0.24.7 stable
+
+Stable maintenance release focused on Auto-start reliability.
+
+Highlights:
+
+- Fixed an Auto-start status bug where the Accessibility helper could be enabled in Android settings but still appear as OFF in Flud Companion.
+- Improved automatic download start reliability on slower Flud startups, especially with roughly 8-10 or more active torrents.
+- Auto-start now waits for Flud's real torrent list to become visible before handing over a magnet, while keeping the fast path when Flud is already ready.
+- Small stability improvements.
+
+Full notes: [v0.24.7.md](v0.24.7.md)
+
 ## 0.24.1 stable
 
 First stable release of Flud Companion.

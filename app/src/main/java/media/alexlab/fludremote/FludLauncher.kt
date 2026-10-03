@@ -62,7 +62,7 @@ object FludLauncher {
         return Result(false, message = "Flud or Flud+ was not found, or neither app accepts magnet URIs")
     }
 
-    fun relaunchLastMagnet(context: Context, maxAgeMs: Long = 30_000L): Result? {
+    fun relaunchLastMagnet(context: Context, maxAgeMs: Long = 120_000L): Result? {
         val magnet = lastMagnet ?: return null
         val age = System.currentTimeMillis() - lastMagnetAt
         if (age < 0L || age > maxAgeMs) return null
