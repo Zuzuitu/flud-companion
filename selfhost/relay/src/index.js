@@ -2,6 +2,7 @@ const VERSION = "0.24.9-selfhost";
 const ONLINE_WINDOW_MS = 25_000;
 const LAST_SEEN_WRITE_INTERVAL_MS = 8_000;
 const COMMAND_MAX_AGE_MS = 10 * 60 * 1000;
+const MAX_TORRENT_BYTES = 5 * 1024 * 1024;
 const JSON_HEADERS = { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" };
 
 function json(data, status = 200) {
@@ -25,6 +26,7 @@ function safeError(error) { return (error?.message || String(error || "Unknown e
 const stateKey = (id) => `devices/${id}/state.json`;
 const queuedKey = (id) => `devices/${id}/queued.json`;
 const inflightKey = (id) => `devices/${id}/inflight.json`;
+const torrentFileKey = (id, commandId) => `devices/${id}/files/${commandId}.torrent`;
 async function readJson(bucket, key) {
   const object = await bucket.get(key);
   if (!object) return null;
@@ -61,6 +63,7 @@ async function bridgePoll(env, deviceId, request) {
   let command = await readJson(env.MAILBOX, queuedKey(deviceId));
   if (command) {
     if (!command.at || now - command.at > COMMAND_MAX_AGE_MS) {
+      if (command.type === "torrent" && command.fileKey) await env.MAILBOX.delete(command.fileKey);
       await env.MAILBOX.delete(queuedKey(deviceId));
       command = null;
     } else {
@@ -78,10 +81,28 @@ async function bridgeResult(env, deviceId, request) {
   const id = typeof body?.id === "string" ? body.id.slice(0, 100) : "";
   if (!id) return json({ error: "Missing command id" }, 400);
   const result = { id, ok: body?.ok === true, message: typeof body?.message === "string" ? body.message.slice(0, 500) : null, package: typeof body?.package === "string" ? body.package.slice(0, 200) : null, at: Date.now() };
+  const inflight = await readJson(env.MAILBOX, inflightKey(deviceId));
   Object.assign(auth.state, { lastSeenAt: Date.now(), lastResult: result });
   await putJson(env.MAILBOX, stateKey(deviceId), auth.state);
+  if (inflight?.type === "torrent" && inflight.fileKey) await env.MAILBOX.delete(inflight.fileKey);
   await env.MAILBOX.delete(inflightKey(deviceId));
   return json({ ok: true, version: VERSION });
+}
+
+async function bridgeFile(env, deviceId, commandId, request) {
+  const auth = await authenticate(env, deviceId, request, true);
+  if (!auth.ok) return auth.response;
+  const inflight = await readJson(env.MAILBOX, inflightKey(deviceId));
+  if (!inflight || inflight.type !== "torrent" || inflight.id !== commandId || !inflight.fileKey) {
+    return json({ error: "Torrent command is not inflight" }, 404);
+  }
+  const object = await env.MAILBOX.get(inflight.fileKey);
+  if (!object) return json({ error: "Torrent payload not found" }, 404);
+  const headers = new Headers();
+  headers.set("content-type", "application/x-bittorrent");
+  headers.set("content-length", String(object.size || inflight.size || 0));
+  headers.set("cache-control", "no-store");
+  return new Response(object.body, { status: 200, headers });
 }
 async function apiStatus(env, deviceId, request) {
   const auth = await authenticate(env, deviceId, request, false);
@@ -120,6 +141,59 @@ async function apiMagnet(env, deviceId, request) {
   return json({ ok: true, queued: true, autoStart, id: command.id, version: VERSION }, 202);
 }
 
+async function apiTorrent(env, deviceId, request) {
+  const auth = await authenticate(env, deviceId, request, false);
+  if (!auth.ok) return auth.response;
+
+  const state = auth.state;
+  const now = Date.now();
+  const requestId = (request.headers.get("x-flud-request-id") || "").trim().slice(0, 100);
+  const autoStart = (request.headers.get("x-flud-auto-start") || "").toLowerCase() === "true";
+  let filename = (request.headers.get("x-flud-filename") || "download.torrent").trim();
+  try { filename = decodeURIComponent(filename); } catch (_) {}
+  filename = filename.slice(0, 180) || "download.torrent";
+
+  if (requestId && !/^[A-Za-z0-9._:-]{8,100}$/.test(requestId)) return json({ error: "Invalid request ID" }, 400);
+  if (requestId && state.lastClientRequestId === requestId && state.lastClientRequestAt && now - state.lastClientRequestAt < 120_000) {
+    return json({ ok: true, queued: true, duplicate: true, autoStart, id: state.lastClientCommandId || null, version: VERSION }, 202);
+  }
+  if (!state.lastSeenAt || now - state.lastSeenAt > ONLINE_WINDOW_MS) return json({ error: "Android device is offline" }, 503);
+
+  const [queued, inflight] = await Promise.all([readJson(env.MAILBOX, queuedKey(deviceId)), readJson(env.MAILBOX, inflightKey(deviceId))]);
+  if (requestId) {
+    const same = [queued, inflight].find((command) => command && command.requestId === requestId);
+    if (same) return json({ ok: true, queued: true, duplicate: true, autoStart: same.autoStart === true, id: same.id || state.lastClientCommandId || null, version: VERSION }, 202);
+  }
+  if (queued || inflight) return json({ error: "A cloud command is already pending" }, 409);
+
+  const declaredLength = Number(request.headers.get("content-length") || 0);
+  if (declaredLength > MAX_TORRENT_BYTES) return json({ error: "Torrent file exceeds 5 MB" }, 413);
+  const bytes = new Uint8Array(await request.arrayBuffer());
+  if (!bytes.length) return json({ error: "Torrent file is empty" }, 400);
+  if (bytes.length > MAX_TORRENT_BYTES) return json({ error: "Torrent file exceeds 5 MB" }, 413);
+  if (bytes[0] !== 100 || bytes[bytes.length - 1] !== 101) return json({ error: "Invalid .torrent metainfo" }, 400);
+  const probe = new TextDecoder("latin1").decode(bytes.subarray(0, Math.min(bytes.length, 65536)));
+  if (!probe.includes("4:info")) return json({ error: "Invalid .torrent metainfo" }, 400);
+
+  const id = crypto.randomUUID();
+  const fileKey = torrentFileKey(deviceId, id);
+  const command = { type: "torrent", id, requestId: requestId || null, filename, size: bytes.length, autoStart, fileKey, at: now };
+
+  await env.MAILBOX.put(fileKey, bytes, { httpMetadata: { contentType: "application/x-bittorrent" } });
+  try {
+    await putJson(env.MAILBOX, queuedKey(deviceId), command);
+  } catch (error) {
+    await env.MAILBOX.delete(fileKey);
+    throw error;
+  }
+
+  if (requestId) {
+    Object.assign(state, { lastClientRequestId: requestId, lastClientCommandId: id, lastClientRequestAt: now });
+    await putJson(env.MAILBOX, stateKey(deviceId), state);
+  }
+  return json({ ok: true, queued: true, autoStart, id, filename, size: bytes.length, version: VERSION }, 202);
+}
+
 const ICON_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1BC8C3"/><stop offset="1" stop-color="#0C9F9D"/></linearGradient></defs><rect width="512" height="512" rx="112" fill="#071011"/><circle cx="190" cy="256" r="84" fill="none" stroke="url(#g)" stroke-width="42"/><circle cx="322" cy="256" r="84" fill="none" stroke="#EAFBFA" stroke-width="42"/><rect x="221" y="235" width="70" height="42" rx="21" fill="#16B8B5"/><circle cx="256" cy="256" r="12" fill="#071011"/></svg>`;
 
 function setupPage(origin) {
@@ -151,6 +225,18 @@ export default {
     if (request.method === "GET" && url.pathname === "/health") return json({ status: "ok", version: VERSION, transport: "https-r2-mailbox" });
     if (request.method === "GET" && url.pathname === "/relay.json") return json({ name: "Flud Companion Relay", version: VERSION, status: "ok", transport: "https-r2-mailbox", app: `${url.origin}/app` });
 
+    let match = url.pathname.match(/^\/bridge\/file\/([A-Za-z0-9_-]+)\/([A-Za-z0-9-]+)$/);
+    if (match) {
+      const [, deviceId, commandId] = match;
+      if (!validDeviceId(deviceId)) return json({ error: "Invalid device ID" }, 400);
+      try {
+        return request.method === "GET" ? await bridgeFile(env, deviceId, commandId, request) : json({ error: "Method not allowed" }, 405);
+      } catch (error) {
+        console.error("bridge file request failed", safeError(error));
+        return json({ error: "Relay internal error", detail: safeError(error), version: VERSION }, 500);
+      }
+    }
+
     let match = url.pathname.match(/^\/bridge\/(poll|result)\/([A-Za-z0-9_-]+)$/);
     if (match) {
       const [, action, deviceId] = match;
@@ -164,12 +250,13 @@ export default {
       }
     }
 
-    match = url.pathname.match(/^\/api\/v1\/device\/([A-Za-z0-9_-]+)\/(magnet|status)$/);
+    match = url.pathname.match(/^\/api\/v1\/device\/([A-Za-z0-9_-]+)\/(magnet|torrent|status)$/);
     if (match) {
       const [, deviceId, action] = match;
       if (!validDeviceId(deviceId)) return json({ error: "Invalid device ID" }, 400);
       try {
         if (action === "status") return request.method === "GET" ? await apiStatus(env, deviceId, request) : json({ error: "Method not allowed" }, 405);
+        if (action === "torrent") return request.method === "POST" ? await apiTorrent(env, deviceId, request) : json({ error: "Method not allowed" }, 405);
         return request.method === "POST" ? await apiMagnet(env, deviceId, request) : json({ error: "Method not allowed" }, 405);
       } catch (error) {
         console.error("api request failed", safeError(error));
