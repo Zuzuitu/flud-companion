@@ -8,6 +8,7 @@ import java.net.InetSocketAddress
 import java.net.ServerSocket
 import java.net.Socket
 import java.net.SocketException
+import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 import java.util.Locale
 import java.util.concurrent.Executors
@@ -20,8 +21,8 @@ class BridgeHttpServer(
 ) {
     companion object {
         private const val MAX_HEADER_BYTES = 16 * 1024
-        private const val MAX_BODY_BYTES = 16 * 1024
-        const val VERSION = "0.24.9"
+        private const val MAX_BODY_BYTES = TorrentFileSupport.MAX_TORRENT_BYTES
+        const val VERSION = "0.25.0-rc1"
     }
 
     private val running = AtomicBoolean(false)
@@ -111,7 +112,7 @@ class BridgeHttpServer(
                     return respond(output, 413, json("error" to "Request body too large"))
                 }
 
-                val body = if (contentLength > 0) {
+                val bodyBytes = if (contentLength > 0) {
                     val bytes = ByteArray(contentLength)
                     var offset = 0
                     while (offset < contentLength) {
@@ -119,9 +120,12 @@ class BridgeHttpServer(
                         if (count < 0) break
                         offset += count
                     }
-                    String(bytes, 0, offset, StandardCharsets.UTF_8)
+                    if (offset == bytes.size) bytes else bytes.copyOf(offset)
                 } else {
-                    ""
+                    ByteArray(0)
+                }
+                val body: String by lazy {
+                    if (bodyBytes.isNotEmpty()) String(bodyBytes, StandardCharsets.UTF_8) else ""
                 }
 
                 when {
@@ -139,7 +143,8 @@ class BridgeHttpServer(
                             "name" to "Flud Companion",
                             "version" to VERSION,
                             "status" to "ok",
-                            "magnetEndpoint" to "/api/v1/magnet"
+                            "magnetEndpoint" to "/api/v1/magnet",
+                            "torrentEndpoint" to "/api/v1/torrent"
                         ))
                     }
 
@@ -158,7 +163,8 @@ class BridgeHttpServer(
                         respond(output, 200, json(
                             "version" to VERSION,
                             "magnet" to true,
-                            "torrentUpload" to false,
+                            "torrentUpload" to true,
+                            "torrentMaxBytes" to TorrentFileSupport.MAX_TORRENT_BYTES,
                             "cloudRelay" to true,
                             "cloudRelayUrl" to BridgePreferences.cloudBaseUrl(context),
                             "cloudDeviceId" to BridgePreferences.cloudDeviceId(context),
@@ -253,6 +259,66 @@ class BridgeHttpServer(
                                 "ok" to false,
                                 "error" to resultMessage,
                                 "autoStart" to autoStart,
+                                "package" to (result.packageName ?: JSONObject.NULL)
+                            ))
+                        }
+                    }
+
+                    method == "POST" && path == "/api/v1/torrent" -> {
+                        if (!isAuthorized(headers)) {
+                            return respond(output, 401, json("error" to "Unauthorized"))
+                        }
+                        if (bodyBytes.isEmpty()) {
+                            return respond(output, 400, json("error" to "Torrent file is empty"))
+                        }
+
+                        val encodedName = headers["x-flud-filename"].orEmpty()
+                        val requestedName = try {
+                            URLDecoder.decode(encodedName, StandardCharsets.UTF_8.name())
+                        } catch (_: Exception) {
+                            encodedName
+                        }
+                        val autoStart = headers["x-flud-auto-start"]?.equals("true", ignoreCase = true) == true
+                        val stored = try {
+                            TorrentFileSupport.store(context, bodyBytes, requestedName)
+                        } catch (e: IllegalArgumentException) {
+                            BridgePreferences.recordLastCommand(context, "Rejected torrent file: ${e.message}", false)
+                            return respond(output, 400, json("error" to (e.message ?: "Invalid .torrent file")))
+                        } catch (e: Exception) {
+                            BridgePreferences.recordLastCommand(context, "Could not cache torrent file", false)
+                            return respond(output, 500, json("error" to (e.message ?: "Could not cache .torrent file")))
+                        }
+
+                        val helperReady = autoStart && FludAutoStartService.isEnabled(context)
+                        val result = if (helperReady) {
+                            FludAutoStartCoordinator.submitTorrent(context, stored)
+                        } else {
+                            TorrentFileLauncher.launch(context, stored)
+                        }
+                        if (!result.success) TorrentFileSupport.delete(stored)
+
+                        val resultMessage = if (result.success && autoStart) {
+                            if (helperReady) result.message
+                            else "${result.message}; auto-start requested but the accessibility helper is not enabled"
+                        } else {
+                            result.message
+                        }
+                        BridgePreferences.recordLastCommand(context, "LAN torrent: $resultMessage", result.success)
+                        if (result.success) {
+                            respond(output, 200, json(
+                                "ok" to true,
+                                "message" to resultMessage,
+                                "autoStart" to autoStart,
+                                "autoStartHelper" to FludAutoStartService.isEnabled(context),
+                                "filename" to stored.displayName,
+                                "package" to (result.packageName ?: JSONObject.NULL)
+                            ))
+                        } else {
+                            respond(output, 409, json(
+                                "ok" to false,
+                                "error" to resultMessage,
+                                "autoStart" to autoStart,
+                                "filename" to stored.displayName,
                                 "package" to (result.packageName ?: JSONObject.NULL)
                             ))
                         }

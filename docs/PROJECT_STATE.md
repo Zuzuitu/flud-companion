@@ -1,6 +1,6 @@
 # Flud Companion - Project State
 
-LAST_UPDATED: 2026-09-13
+LAST_UPDATED: 2026-10-03
 STATUS: Stable public release 0.24.9. The public release source is the immutable tag `v0.24.9`; `main` may move forward with post-release maintenance and governance changes.
 
 This file is the canonical human-readable technical checkpoint for Flud Companion.
@@ -37,6 +37,21 @@ Repository truth overrides chat memory. Do not reconstruct current behavior from
   - `com.delphicoder.flud.paid`
 
 The published release tag and GitHub Release assets are part of release integrity. Do not move a published tag, recreate a release, or replace its assets unless the owner explicitly requests a history/release rewrite and the consequences are understood.
+
+
+## Unreleased development candidate
+
+The source tree contains an unreleased **0.25.0-rc1** candidate (versionCode 41) for hardware validation. Public stable remains **0.24.9** until the owner explicitly approves a new release.
+
+Candidate scope:
+- direct single-file `.torrent` selection in LAN and Remote PWAs;
+- maximum accepted `.torrent` size: 5 MB;
+- strict bencode/metainfo validation in the Android Bridge;
+- read-only `content://` handoff to Flud from private app cache;
+- Remote transport uses the existing user-owned R2 mailbox only as temporary payload storage;
+- v11 structural preflight and exactly-one handoff remain the Auto-start safety boundary for both magnets and `.torrent` files.
+
+This candidate is **not hardware-validated yet**. Treat it as patch ready for CI first, then Shield testing. Do not publish it as stable based only on a green build.
 
 ## Product architecture
 

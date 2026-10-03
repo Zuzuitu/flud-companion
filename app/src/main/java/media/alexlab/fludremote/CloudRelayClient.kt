@@ -17,7 +17,7 @@ class CloudRelayClient(context: Context) {
     data class Snapshot(val state: State, val detail: String)
 
     companion object {
-        private const val BRIDGE_VERSION = "0.24.9"
+        private const val BRIDGE_VERSION = "0.25.0-rc1"
         private const val POLL_SECONDS = 2L
         @Volatile private var currentState: State = State.STOPPED
         @Volatile private var currentDetail: String = "Not started"
@@ -31,8 +31,8 @@ class CloudRelayClient(context: Context) {
     private val jsonType = "application/json; charset=utf-8".toMediaType()
     private val client = OkHttpClient.Builder()
         .connectTimeout(12, TimeUnit.SECONDS)
-        .readTimeout(12, TimeUnit.SECONDS)
-        .callTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(20, TimeUnit.SECONDS)
+        .callTimeout(25, TimeUnit.SECONDS)
         .retryOnConnectionFailure(true)
         .build()
     @Volatile private var reconnectAttempt = 0
@@ -102,7 +102,15 @@ class CloudRelayClient(context: Context) {
         val type = command.optString("type")
         val id = command.optString("id")
         if (id.isBlank()) return
-        if (type != "magnet") { postResult(base, deviceId, token, id, false, "Unsupported remote command", null); return }
+
+        when (type) {
+            "magnet" -> handleMagnet(base, deviceId, token, id, command)
+            "torrent" -> handleTorrent(base, deviceId, token, id, command)
+            else -> postResult(base, deviceId, token, id, false, "Unsupported remote command", null)
+        }
+    }
+
+    private fun handleMagnet(base: String, deviceId: String, token: String, id: String, command: JSONObject) {
         val magnet = command.optString("magnet")
         val autoStart = command.optBoolean("autoStart", false)
         val validMagnet = magnet.startsWith("magnet:?", ignoreCase = true) && magnet.length <= 12_000
@@ -113,17 +121,99 @@ class CloudRelayClient(context: Context) {
             else -> FludLauncher.launchMagnet(appContext, magnet)
         }
         val resultMessage = if (result.success && autoStart) {
-            if (helperReady) result.message else "${result.message}; auto-start requested but the Flud Companion accessibility helper is not enabled"
+            if (helperReady) result.message
+            else "${result.message}; auto-start requested but the Flud Companion accessibility helper is not enabled"
         } else result.message
         BridgePreferences.recordLastCommand(appContext, "Remote: $resultMessage", result.success)
         postResult(base, deviceId, token, id, result.success, resultMessage, result.packageName)
     }
 
-    private fun postResult(base: String, deviceId: String, token: String, id: String, ok: Boolean, message: String?, packageName: String?) {
+    private fun handleTorrent(base: String, deviceId: String, token: String, id: String, command: JSONObject) {
+        val filename = command.optString("filename", "download.torrent")
+        val declaredSize = command.optLong("size", -1L)
+        val autoStart = command.optBoolean("autoStart", false)
+        if (declaredSize <= 0L || declaredSize > TorrentFileSupport.MAX_TORRENT_BYTES) {
+            val message = "Invalid remote .torrent size"
+            BridgePreferences.recordLastCommand(appContext, "Remote torrent: $message", false)
+            postResult(base, deviceId, token, id, false, message, null)
+            return
+        }
+
+        val bytes = downloadTorrent(base, deviceId, token, id, declaredSize)
+        if (bytes == null) {
+            val message = "Could not download queued .torrent file from relay"
+            BridgePreferences.recordLastCommand(appContext, "Remote torrent: $message", false)
+            postResult(base, deviceId, token, id, false, message, null)
+            return
+        }
+
+        val stored = try {
+            TorrentFileSupport.store(appContext, bytes, filename)
+        } catch (e: Exception) {
+            val message = e.message ?: "Invalid .torrent file from relay"
+            BridgePreferences.recordLastCommand(appContext, "Remote torrent: $message", false)
+            postResult(base, deviceId, token, id, false, message, null)
+            return
+        }
+
+        val helperReady = autoStart && FludAutoStartService.isEnabled(appContext)
+        val result = if (helperReady) {
+            FludAutoStartCoordinator.submitTorrent(appContext, stored)
+        } else {
+            TorrentFileLauncher.launch(appContext, stored)
+        }
+        if (!result.success) TorrentFileSupport.delete(stored)
+
+        val resultMessage = if (result.success && autoStart) {
+            if (helperReady) result.message
+            else "${result.message}; auto-start requested but the Flud Companion accessibility helper is not enabled"
+        } else result.message
+        BridgePreferences.recordLastCommand(appContext, "Remote torrent: $resultMessage", result.success)
+        postResult(base, deviceId, token, id, result.success, resultMessage, result.packageName)
+    }
+
+    private fun downloadTorrent(
+        base: String,
+        deviceId: String,
+        token: String,
+        commandId: String,
+        declaredSize: Long
+    ): ByteArray? {
+        val request = Request.Builder()
+            .url("$base/bridge/file/$deviceId/$commandId")
+            .header("Authorization", "Bearer $token")
+            .get()
+            .build()
+        return try {
+            client.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) return null
+                val length = response.body?.contentLength() ?: -1L
+                if (length > TorrentFileSupport.MAX_TORRENT_BYTES || (length >= 0L && length != declaredSize)) return null
+                val bytes = response.body?.bytes() ?: return null
+                if (bytes.isEmpty() || bytes.size > TorrentFileSupport.MAX_TORRENT_BYTES || bytes.size.toLong() != declaredSize) null else bytes
+            }
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    private fun postResult(
+        base: String,
+        deviceId: String,
+        token: String,
+        id: String,
+        ok: Boolean,
+        message: String?,
+        packageName: String?
+    ) {
         val payload = JSONObject().put("id", id).put("ok", ok)
         if (!message.isNullOrBlank()) payload.put("message", message)
         if (!packageName.isNullOrBlank()) payload.put("package", packageName)
-        val request = Request.Builder().url("$base/bridge/result/$deviceId").header("Authorization", "Bearer $token").post(payload.toString().toRequestBody(jsonType)).build()
+        val request = Request.Builder()
+            .url("$base/bridge/result/$deviceId")
+            .header("Authorization", "Bearer $token")
+            .post(payload.toString().toRequestBody(jsonType))
+            .build()
         try { client.newCall(request).execute().use { } } catch (_: Exception) {}
     }
 
