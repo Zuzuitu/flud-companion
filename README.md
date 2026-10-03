@@ -2,18 +2,18 @@
 
 **Remote control for Flud from iPhone, Android, tablet or desktop - including Flud running on Android TV / NVIDIA Shield.**
 
-[![Latest release](https://img.shields.io/badge/release-v0.24.9-blue)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.9)
-[![Android](https://img.shields.io/badge/Android-6%2B-brightgreen)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.9)
+[![Latest release](https://img.shields.io/badge/release-v0.25.0-blue)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.25.0)
+[![Android](https://img.shields.io/badge/Android-6%2B-brightgreen)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.25.0)
 [![License](https://img.shields.io/badge/license-Apache--2.0-lightgrey)](LICENSE)
 
-**[Download the signed Android APK](https://github.com/Zuzuitu/flud-companion/releases/download/v0.24.9/FludCompanion-0.24.9.apk)** · [0.24.9 release notes](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.24.9) · [Quick start](docs/quick-start.md) · [Changelog](CHANGELOG.md)
+**[Download the signed Android APK](https://github.com/Zuzuitu/flud-companion/releases/download/v0.25.0/FludCompanion-0.25.0.apk)** · [0.25.0 release notes](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.25.0) · [Quick start](docs/quick-start.md) · [Changelog](CHANGELOG.md)
 
 Flud Companion adds a browser-based remote interface to **Flud / Flud+**. Install the small Android Bridge on the device that runs Flud, then control it from **iPhone, Android, tablet or desktop** over your home LAN or remotely over the internet.
 
 Typical use cases:
 
 - control **Flud on NVIDIA Shield / Android TV** from your phone;
-- send **magnet links to Flud from iPhone** or any modern browser;
+- send **magnet links or `.torrent` files to Flud from iPhone** or any modern browser;
 - use a lightweight **Flud web interface / remote control** on your local network;
 - control Flud away from home without exposing an inbound router port;
 - self-host Remote through your own **Cloudflare Worker + R2** account.
@@ -35,17 +35,17 @@ No Tailscale or project-owned cloud account is required for Remote mode. Each us
   </tr>
 </table>
 
-## Current release - 0.24.9
+## Current release - 0.25.0
 
-0.24.9 is a small reliability and UI maintenance release.
+0.25.0 adds direct `.torrent` file sending alongside magnet links.
 
 ### What's new
 
-- Improved Auto-start reliability during demanding Flud cold starts.
-- Improved the relay setup page layout on smaller screens.
-- Minor stability and visual refinements.
+- Send `.torrent` files directly to Flud from the LAN or Remote PWA.
+- Improved iPhone/iPad Files compatibility for selecting `.torrent` files.
+- Optional Auto-start works with both magnet links and `.torrent` files.
 
-See the [0.24.9 notes](docs/releases/v0.24.9.md), [release history](docs/releases/README.md) and full [CHANGELOG](CHANGELOG.md).
+See the [0.24.9 notes](docs/releases/v0.25.0.md), [release history](docs/releases/README.md) and full [CHANGELOG](CHANGELOG.md).
 
 ### Quick setup
 
@@ -69,12 +69,13 @@ For Remote, the intended setup is:
 - Bring-your-own Cloudflare Worker + R2 relay
 - No inbound home-network port required
 - Remote PWA served by each user's own relay
+- Direct `.torrent` file sending over LAN and Remote
 - Optional guarded Auto-start through Android Accessibility
 - English / Romanian / French / German UI
 - Recent-send history stored only in the browser
 - Optional browser-local support reminder; no project telemetry
 
-The interface uses the same linked-rings identity across Android Bridge, Local LAN UI, Remote PWA, app icon and Android TV presentation. Android is organized around **Status → Controls → Pairing → Advanced**, while the phone UI provides a compact device status card, magnet composer, Auto-start switch, primary send action, recent-send list and saved pairing.
+The interface uses the same linked-rings identity across Android Bridge, Local LAN UI, Remote PWA, app icon and Android TV presentation. Android is organized around **Status → Controls → Pairing → Advanced**, while the phone UI provides a compact device status card, magnet / `.torrent` composer, Auto-start switch, primary send action, recent-send list and saved pairing.
 
 ## Public architecture
 
@@ -123,7 +124,7 @@ Use torrent/magnet content only where you have the right to download it.
 
 ## Support reminder
 
-After every 50 successful magnet sends in a given browser/origin, the Web Companion can show a small optional support reminder. The counter stays in local browser storage; it is not telemetry and is not sent to alexlab.media. LAN and Remote origins keep independent counters by browser security design.
+After every 50 successful sends in a given browser/origin, the Web Companion can show a small optional support reminder. The counter stays in local browser storage; it is not telemetry and is not sent to alexlab.media. LAN and Remote origins keep independent counters by browser security design.
 
 ## License
 
