@@ -231,6 +231,23 @@ Decisions completed in this session:
 - The stable release is now `v0.25.0`, Android versionCode `43`.
 - Release notes remain concise and user-facing, centered on the new `.torrent` file capability.
 
+## Session checkpoint addendum - 2026-10-03
+
+Decisions and validated outcomes completed after the initial 2026-10-03 checkpoint:
+
+- The final picker copy is intentionally concise: `Choose .torrent` with a `Max 5 MB` hint; after selection the hint is replaced by the selected filename and size.
+- iOS/iPadOS file selection intentionally uses no HTML `accept` filter for the torrent picker because Files can gray out valid `.torrent` files when MIME/UTType mapping is missing or inconsistent.
+- LAN `.torrent` sending was validated successfully from iPhone to NVIDIA Shield with Auto-start.
+- Personal Remote `.torrent` sending through `flud-remote.alexlab.media` was also validated successfully from iPhone to NVIDIA Shield.
+- The personal/live relay source remains in the historical/private `flud-remote` repository and that repository must remain private.
+- The public architecture remains user-owned/self-hosted: Remote `.torrent` payloads use the user's existing R2 mailbox only as temporary transport and do not introduce a shared alexlab.media relay for public users.
+- Public stable `Flud Companion 0.25.0` was published with Android `versionCode 43` and tag `v0.25.0`.
+- Public release notes intentionally highlight the new direct `.torrent` file sending capability without narrating internal debugging attempts.
+- The 0.25.0 signed APK was built with the permanent release signing identity and the certificate fingerprint verification passed.
+- The one-shot 0.25.0 publication workflow was removed immediately after publication; the durable workflow set remains only the five canonical workflows documented above.
+- The private live relay was promoted from the tested `0.25.0-rc2` surface to `0.25.0` stable without changing its transport/security architecture.
+- The owner explicitly authorized a new public-history deep clean after this checkpoint, provided Releases, release assets/download counts, signing identity, production architecture, technical memory and real contributor attribution are preserved.
+
 ## Known technical debt
 
 The 0.25.0 release adds hardware-validated `.torrent` file handoff while preserving the structural Auto-start preflight and mobile relay layout fixes from 0.24.9.
