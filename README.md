@@ -2,11 +2,11 @@
 
 **Remote control for Flud from iPhone, Android, tablet or desktop - including Flud running on Android TV / NVIDIA Shield.**
 
-[![Latest release](https://img.shields.io/badge/release-v0.25.0-blue)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.25.0)
-[![Android](https://img.shields.io/badge/Android-6%2B-brightgreen)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.25.0)
+[![Latest release](https://img.shields.io/badge/release-v0.25.1-blue)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.25.1)
+[![Android](https://img.shields.io/badge/Android-6%2B-brightgreen)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.25.1)
 [![License](https://img.shields.io/badge/license-Apache--2.0-lightgrey)](LICENSE)
 
-**[Download the signed Android APK](https://github.com/Zuzuitu/flud-companion/releases/download/v0.25.0/FludCompanion-0.25.0.apk)** · [0.25.0 release notes](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.25.0) · [Quick start](docs/quick-start.md) · [Changelog](CHANGELOG.md)
+**[Download the signed Android APK](https://github.com/Zuzuitu/flud-companion/releases/download/v0.25.1/FludCompanion-0.25.1.apk)** · [0.25.1 release notes](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.25.1) · [Quick start](docs/quick-start.md) · [Changelog](CHANGELOG.md)
 
 Flud Companion adds a browser-based remote interface to **Flud / Flud+**. Install the small Android Bridge on the device that runs Flud, then control it from **iPhone, Android, tablet or desktop** over your home LAN or remotely over the internet.
 
@@ -35,17 +35,16 @@ No Tailscale or project-owned cloud account is required for Remote mode. Each us
   </tr>
 </table>
 
-## Current release - 0.25.0
+## Current release - 0.25.1
 
-0.25.0 adds direct `.torrent` file sending alongside magnet links.
+0.25.1 is a small maintenance release that keeps the Android Bridge version shown in LAN and Remote status aligned with the installed app.
 
 ### What's new
 
-- Send `.torrent` files directly to Flud from the LAN or Remote PWA.
-- Improved iPhone/iPad Files compatibility for selecting `.torrent` files.
-- Optional Auto-start works with both magnet links and `.torrent` files.
+- Correct Android Bridge version reporting in LAN and Remote status.
+- Keep the `.torrent`, magnet and Auto-start behavior from 0.25.0 unchanged.
 
-See the [0.25.0 notes](docs/releases/v0.25.0.md), [release history](docs/releases/README.md) and full [CHANGELOG](CHANGELOG.md).
+See the [0.25.0 notes](docs/releases/v0.25.1.md), [release history](docs/releases/README.md) and full [CHANGELOG](CHANGELOG.md).
 
 ### Quick setup
 

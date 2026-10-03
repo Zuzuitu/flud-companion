@@ -14,6 +14,7 @@ Do not change repository visibility until every required gate below is satisfied
 ## Build and tests
 
 - [x] Android debug APK builds in GitHub Actions.
+- [x] Android package, LAN Bridge, Remote Bridge, relay package/runtime, README and release invariants pass the automated version-consistency check.
 - [x] Self-host relay syntax + Wrangler dry-run validation passes in GitHub Actions.
 - [x] Clean-account LAN onboarding tested on real hardware.
 - [x] Clean-account Remote onboarding tested over mobile data.

@@ -17,7 +17,7 @@ class CloudRelayClient(context: Context) {
     data class Snapshot(val state: State, val detail: String)
 
     companion object {
-        private const val BRIDGE_VERSION = "0.25.0-rc2"
+        private val BRIDGE_VERSION: String = BuildConfig.VERSION_NAME
         private const val POLL_SECONDS = 2L
         @Volatile private var currentState: State = State.STOPPED
         @Volatile private var currentDetail: String = "Not started"

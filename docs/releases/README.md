@@ -2,6 +2,18 @@
 
 This folder keeps the human-readable notes for Flud Companion public releases.
 
+## 0.25.1 stable
+
+Small maintenance release for version-reporting consistency.
+
+Highlights:
+
+- Android Bridge LAN and Remote status now report the installed stable app version correctly.
+- Bridge reporting is derived from the Android app build version to prevent RC/stable mismatches.
+- Magnet, `.torrent` and Auto-start behavior are unchanged.
+
+Full notes: [v0.25.1.md](v0.25.1.md)
+
 ## 0.25.0 stable
 
 Adds direct `.torrent` file sending alongside magnet links.

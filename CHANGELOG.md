@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.25.1 stable
+- Correct Android Bridge version reporting in LAN and Remote status surfaces.
+- Derive Android Bridge reporting from the installed app version to prevent future RC/stable mismatches.
+- No functional changes to magnet, `.torrent`, relay transport, or Auto-start behavior.
+
 ## 0.25.0 stable
 - Add direct `.torrent` file selection and sending from both LAN and Remote PWAs.
 - Improve iPhone/iPad Files compatibility when choosing `.torrent` files.

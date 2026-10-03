@@ -19,3 +19,6 @@ jobs:
 
       - name: Check sanitized source tree
         run: bash scripts/check-public-source.sh
+
+      - name: Verify release version consistency
+        run: bash scripts/check-version-consistency.sh

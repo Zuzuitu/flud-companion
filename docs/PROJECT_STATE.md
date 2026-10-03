@@ -1,7 +1,7 @@
 # Flud Companion - Project State
 
 LAST_UPDATED: 2026-10-03
-STATUS: Stable public release 0.25.0. The public release source is the immutable tag `v0.25.0`; `main` may move forward with post-release maintenance and governance changes.
+STATUS: Stable public release 0.25.1. The public release source is the immutable tag `v0.25.1`; `main` may move forward with post-release maintenance and governance changes.
 
 This file is the canonical human-readable technical checkpoint for Flud Companion.
 
@@ -24,10 +24,10 @@ Repository truth overrides chat memory. Do not reconstruct current behavior from
 
 ## Current public release
 
-- Release: `0.25.0`
-- Tag: `v0.25.0`
-- Android `versionCode`: `43`
-- Android `versionName`: `0.25.0`
+- Release: `0.25.1`
+- Tag: `v0.25.1`
+- Android `versionCode`: `44`
+- Android `versionName`: `0.25.1`
 - Application ID: `media.alexlab.fludremote`
 - Minimum Android SDK: 23
 - Target Android SDK: 33
@@ -38,6 +38,15 @@ Repository truth overrides chat memory. Do not reconstruct current behavior from
 
 The published release tag and GitHub Release assets are part of release integrity. Do not move a published tag, recreate a release, or replace its assets unless the owner explicitly requests a history/release rewrite and the consequences are understood.
 
+
+## 0.25.1 release scope
+
+0.25.1 is a maintenance release for version-reporting consistency.
+
+- The Android package version is `0.25.1` / versionCode `44`.
+- LAN Bridge and Remote polling report `BuildConfig.VERSION_NAME` rather than a separately hard-coded version string.
+- This removes the RC/stable display mismatch observed after installing 0.25.0.
+- Magnet, `.torrent`, relay transport and Auto-start behavior are unchanged from the validated 0.25.0 implementation.
 
 ## 0.25.0 release scope
 
@@ -180,6 +189,7 @@ With explicit owner authorization, the public history was deep-cleaned again on 
 - `0.24.8`
 - `0.24.9`
 - `0.25.0`
+- `0.25.1`
 
 Each reachable snapshot represents a real public release and is attributed to `Zuzuitu`. Development retries, temporary publishing helpers, intermediate patch commits and bookkeeping noise are intentionally not part of the normal public history.
 
@@ -250,6 +260,12 @@ Decisions and validated outcomes completed after the initial 2026-10-03 checkpoi
 - The one-shot 0.25.0 publication workflow was removed immediately after publication; the durable workflow set remains only the five canonical workflows documented above.
 - The private live relay was promoted from the tested `0.25.0-rc2` surface to `0.25.0` stable without changing its transport/security architecture.
 - The owner explicitly authorized a new public-history deep clean after this checkpoint, provided Releases, release assets/download counts, signing identity, production architecture, technical memory and real contributor attribution are preserved.
+
+## Session checkpoint patch - 2026-10-03
+
+- A post-release consistency bug was confirmed: the installed 0.25.0 APK still reported `0.25.0-rc2` through LAN/Remote Bridge status because two runtime constants remained hard-coded.
+- 0.25.1 replaces those Android Bridge version constants with `BuildConfig.VERSION_NAME`, preventing the same RC/stable mismatch from recurring.
+- This patch intentionally changes only version reporting/version metadata; validated magnet, `.torrent`, relay transport and Auto-start behavior remain unchanged.
 
 ## Known technical debt
 
