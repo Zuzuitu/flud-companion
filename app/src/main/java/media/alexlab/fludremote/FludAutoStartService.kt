@@ -210,6 +210,15 @@ class FludAutoStartService : AccessibilityService() {
             return FludLauncher.launchMagnet(launchContext, magnet, packageName)
         }
 
+        fun handoffTorrent(
+            context: Context,
+            packageName: String,
+            torrent: TorrentFileSupport.StoredTorrent
+        ): FludLauncher.Result {
+            val launchContext: Context = activeService ?: context
+            return TorrentFileLauncher.launch(launchContext, torrent, packageName)
+        }
+
         private fun clear(status: String, diagnostic: String? = null) {
             pendingUntil = 0L
             pendingSince = 0L
