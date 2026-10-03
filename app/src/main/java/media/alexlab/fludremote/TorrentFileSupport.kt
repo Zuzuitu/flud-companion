@@ -67,6 +67,7 @@ object TorrentFileSupport {
         val cleaned = original
             .replace(Regex("[\\u0000-\\u001f\\u007f]"), "")
             .replace(Regex("[^A-Za-z0-9._()\\[\\] -]"), "_")
+            .replace(Regex("_+"), "_")
             .trim()
             .take(180)
             .ifBlank { "download.torrent" }
