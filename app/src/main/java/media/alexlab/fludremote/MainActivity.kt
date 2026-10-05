@@ -813,7 +813,8 @@ class MainActivity : Activity() {
         val installed = FludLauncher.installedPackage(this)
         val overlayAllowed = Build.VERSION.SDK_INT < Build.VERSION_CODES.M || Settings.canDrawOverlays(this)
         val autoStart = BridgePreferences.autoStart(this)
-        val remoteAutoStartReady = FludAutoStartService.isEnabled(this)
+        val helperEnabled = FludAutoStartService.isEnabled(this)
+        val remoteAutoStartReady = FludAutoStartService.isConnected()
         val cloudEnabled = BridgePreferences.cloudEnabled(this)
         val cloudBase = BridgePreferences.cloudBaseUrl(this)
         val cloud = CloudRelayClient.snapshot()
@@ -828,7 +829,11 @@ class MainActivity : Activity() {
             append("  •  ${tr("start_after_reboot")}: ")
             append(if (autoStart) "${tr("on")} ✓" else tr("off"))
             append("\n${tr("auto_helper")}: ")
-            append(if (remoteAutoStartReady) tr("ready") else tr("optional_off"))
+            append(when {
+                remoteAutoStartReady -> tr("ready")
+                helperEnabled -> tr("connecting")
+                else -> tr("optional_off")
+            })
             append("\n${tr("remote")}: ")
             append(when {
                 remoteReady -> tr("ready")
@@ -849,10 +854,10 @@ class MainActivity : Activity() {
         overlayView.text = "${tr("background_launch")}: ${if (overlayAllowed) tr("permission_enabled") else tr("permission_not_enabled")}"
         autoStartView.text = "${tr("auto_after_reboot")}: ${if (autoStart) tr("on") else tr("off")}"
         autoStartButton.text = if (autoStart) tr("disable_auto_start") else tr("enable_auto_start")
-        remoteAutoStartView.text = if (remoteAutoStartReady) {
-            "${tr("auto_helper")}: ${tr("ready")} — ${FludAutoStartService.status()}"
-        } else {
-            tr("helper_off_desc")
+        remoteAutoStartView.text = when {
+            remoteAutoStartReady -> "${tr("auto_helper")}: ${tr("ready")} — ${FludAutoStartService.status()}"
+            helperEnabled -> "${tr("auto_helper")}: ${tr("connecting")} — ${FludAutoStartService.connectionDiagnostic(this)}"
+            else -> tr("helper_off_desc")
         }
         remoteAutoStartButton.text = if (remoteAutoStartReady) tr("helper_settings_ready") else tr("enable_helper")
         cloudButton.text = if (cloudEnabled) tr("disable_remote_relay") else tr("enable_remote_relay")
