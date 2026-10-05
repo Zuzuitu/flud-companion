@@ -37,7 +37,8 @@
     "accessibility_enabled_detection_must_keep_secure_settings_fallback": true,
     "autostart_reopen_only_before_handoff": true,
     "release_notes_are_concise_user_facing_summaries": true,
-    "remote_torrent_payloads_use_temporary_user_owned_r2_storage": true
+    "remote_torrent_payloads_use_temporary_user_owned_r2_storage": true,
+    "autostart_requires_live_accessibility_connection_before_flud_preflight": true
   },
   "signing": {
     "certificate_sha256": "c0bbc7472b10c74325039bbf83c9bc2f92e3ff869eaf49599ed67cd546bb5998",
@@ -82,5 +83,11 @@
     "client_filename_and_size_checks": true,
     "bridge_metainfo_validation": true,
     "remote_payload_storage": "temporary-user-owned-r2"
+  },
+  "development_candidate": {
+    "version_name": "0.25.2-rc1",
+    "version_code": 45,
+    "hardware_validation_required": true,
+    "purpose": "reboot-start and Accessibility liveness regression"
   }
 }
