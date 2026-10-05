@@ -8,9 +8,9 @@
     "AGENTS.md"
   ],
   "current_release": {
-    "version_name": "0.25.1",
-    "version_code": 44,
-    "tag": "v0.25.1",
+    "version_name": "0.25.2",
+    "version_code": 45,
+    "tag": "v0.25.2",
     "application_id": "media.alexlab.fludremote"
   },
   "hard_invariants": {
@@ -83,11 +83,5 @@
     "client_filename_and_size_checks": true,
     "bridge_metainfo_validation": true,
     "remote_payload_storage": "temporary-user-owned-r2"
-  },
-  "development_candidate": {
-    "version_name": "0.25.2-rc1",
-    "version_code": 45,
-    "hardware_validation_required": true,
-    "purpose": "reboot-start and Accessibility liveness regression"
   }
 }
