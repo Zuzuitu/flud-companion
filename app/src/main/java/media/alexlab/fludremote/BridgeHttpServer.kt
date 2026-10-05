@@ -170,10 +170,12 @@ class BridgeHttpServer(
                             "cloudDeviceId" to BridgePreferences.cloudDeviceId(context),
                             "cloudEnabled" to BridgePreferences.cloudEnabled(context),
                             "autoStart" to BridgePreferences.autoStart(context),
-                            "autoStartHelper" to FludAutoStartService.isEnabled(context),
+                            "autoStartHelper" to FludAutoStartService.isConnected(),
+                            "autoStartHelperEnabled" to FludAutoStartService.isEnabled(context),
+                            "autoStartHelperConnection" to FludAutoStartService.connectionDiagnostic(context),
                             "autoStartStrategy" to FludAutoStartService.strategy(),
                             "autoStartDiagnostic" to FludAutoStartService.diagnostic(),
-                            "remoteAutoStartHelper" to FludAutoStartService.isEnabled(context),
+                            "remoteAutoStartHelper" to FludAutoStartService.isConnected(),
                             "remoteAutoStartStrategy" to FludAutoStartService.strategy(),
                             "remoteAutoStartDiagnostic" to FludAutoStartService.diagnostic(),
                             "fludPackage" to (FludLauncher.installedPackage(context) ?: JSONObject.NULL)
@@ -197,11 +199,12 @@ class BridgeHttpServer(
                             "status" to "ok",
                             "version" to VERSION,
                             "autoStart" to BridgePreferences.autoStart(context),
-                            "autoStartHelper" to FludAutoStartService.isEnabled(context),
+                            "autoStartHelper" to FludAutoStartService.isConnected(),
                             "autoStartStatus" to FludAutoStartService.status(),
                             "autoStartStrategy" to FludAutoStartService.strategy(),
                             "autoStartDiagnostic" to FludAutoStartService.diagnostic(),
-                            "remoteAutoStartHelper" to FludAutoStartService.isEnabled(context),
+                            "remoteAutoStartHelper" to FludAutoStartService.isConnected(),
+                            "remoteAutoStartHelperEnabled" to FludAutoStartService.isEnabled(context),
                             "remoteAutoStartStatus" to FludAutoStartService.status(),
                             "remoteAutoStartStrategy" to FludAutoStartService.strategy(),
                             "remoteAutoStartDiagnostic" to FludAutoStartService.diagnostic(),
@@ -230,28 +233,20 @@ class BridgeHttpServer(
                         }
 
                         val autoStart = extractAutoStart(body, headers["content-type"])
-                        val helperReady = autoStart && FludAutoStartService.isEnabled(context)
-                        val result = if (helperReady) {
-                            FludAutoStartCoordinator.submit(context, magnet.trim())
-                        } else {
-                            FludLauncher.launchMagnet(context, magnet.trim())
+                        val helperEnabled = FludAutoStartService.isEnabled(context)
+                        val result = when {
+                            autoStart && !helperEnabled -> FludLauncher.Result(false, message = "Auto-start helper is not enabled on Android")
+                            autoStart -> FludAutoStartCoordinator.submit(context, magnet.trim())
+                            else -> FludLauncher.launchMagnet(context, magnet.trim())
                         }
-                        val resultMessage = if (result.success && autoStart) {
-                            if (helperReady) {
-                                result.message
-                            } else {
-                                "${result.message}; auto-start requested but the accessibility helper is not enabled"
-                            }
-                        } else {
-                            result.message
-                        }
+                        val resultMessage = result.message
                         BridgePreferences.recordLastCommand(context, "LAN: $resultMessage", result.success)
                         if (result.success) {
                             respond(output, 200, json(
                                 "ok" to true,
                                 "message" to resultMessage,
                                 "autoStart" to autoStart,
-                                "autoStartHelper" to FludAutoStartService.isEnabled(context),
+                                "autoStartHelper" to FludAutoStartService.isConnected(),
                                 "package" to (result.packageName ?: JSONObject.NULL)
                             ))
                         } else {
@@ -289,27 +284,22 @@ class BridgeHttpServer(
                             return respond(output, 500, json("error" to (e.message ?: "Could not cache .torrent file")))
                         }
 
-                        val helperReady = autoStart && FludAutoStartService.isEnabled(context)
-                        val result = if (helperReady) {
-                            FludAutoStartCoordinator.submitTorrent(context, stored)
-                        } else {
-                            TorrentFileLauncher.launch(context, stored)
+                        val helperEnabled = FludAutoStartService.isEnabled(context)
+                        val result = when {
+                            autoStart && !helperEnabled -> FludLauncher.Result(false, message = "Auto-start helper is not enabled on Android")
+                            autoStart -> FludAutoStartCoordinator.submitTorrent(context, stored)
+                            else -> TorrentFileLauncher.launch(context, stored)
                         }
                         if (!result.success) TorrentFileSupport.delete(stored)
 
-                        val resultMessage = if (result.success && autoStart) {
-                            if (helperReady) result.message
-                            else "${result.message}; auto-start requested but the accessibility helper is not enabled"
-                        } else {
-                            result.message
-                        }
+                        val resultMessage = result.message
                         BridgePreferences.recordLastCommand(context, "LAN torrent: $resultMessage", result.success)
                         if (result.success) {
                             respond(output, 200, json(
                                 "ok" to true,
                                 "message" to resultMessage,
                                 "autoStart" to autoStart,
-                                "autoStartHelper" to FludAutoStartService.isEnabled(context),
+                                "autoStartHelper" to FludAutoStartService.isConnected(),
                                 "filename" to stored.displayName,
                                 "package" to (result.packageName ?: JSONObject.NULL)
                             ))
