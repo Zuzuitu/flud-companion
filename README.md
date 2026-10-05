@@ -45,7 +45,7 @@ No Tailscale or project-owned cloud account is required for Remote mode. Each us
 - Improved Auto-start helper readiness detection after reboot.
 - Existing magnet, `.torrent` and structural Auto-start safety behavior is preserved.
 
-See the [0.25.0 notes](docs/releases/v0.25.2.md), [release history](docs/releases/README.md) and full [CHANGELOG](CHANGELOG.md).
+See the [0.25.2 notes](docs/releases/v0.25.2.md), [release history](docs/releases/README.md) and full [CHANGELOG](CHANGELOG.md).
 
 ### Quick setup
 
