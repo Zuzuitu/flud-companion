@@ -16,13 +16,13 @@ import android.os.Looper
  */
 object FludAutoStartCoordinator {
     private const val PREPARE_TIMEOUT_MS = 180_000L
-    private const val HELPER_CONNECT_TIMEOUT_MS = 20_000L
     private const val CHECK_INTERVAL_MS = 400L
     private const val FINAL_VERIFY_MS = 450L
 
     private val handler = Handler(Looper.getMainLooper())
     private val lock = Any()
     private val gate = FludPreflightGate()
+    private val helperGate = AccessibilityConnectionGate()
 
     private sealed class PendingPayload {
         data class Magnet(val value: String) : PendingPayload()
@@ -173,21 +173,27 @@ object FludAutoStartCoordinator {
         }
 
         if (waitingForHelperConnection) {
-            if (!FludAutoStartService.isEnabled(context)) {
-                synchronized(lock) {
-                    if (expectedGeneration != generation) return
-                    clearQueueLocked(discardPayload = true)
-                }
-                FludAutoStartService.report(
-                    "Auto-start helper was disabled before handoff",
-                    "No ${payload.label()} was sent; retry is safe"
+            when (
+                helperGate.observe(
+                    elapsedMs = elapsed,
+                    enabledInSettings = FludAutoStartService.isEnabled(context),
+                    connected = FludAutoStartService.isConnected()
                 )
-                BridgePreferences.recordLastCommand(context, "Auto-start: Accessibility helper disabled before handoff", false)
-                return
-            }
+            ) {
+                AccessibilityConnectionGate.Decision.DISABLED -> {
+                    synchronized(lock) {
+                        if (expectedGeneration != generation) return
+                        clearQueueLocked(discardPayload = true)
+                    }
+                    FludAutoStartService.report(
+                        "Auto-start helper was disabled before handoff",
+                        "No ${payload.label()} was sent; retry is safe"
+                    )
+                    BridgePreferences.recordLastCommand(context, "Auto-start: Accessibility helper disabled before handoff", false)
+                    return
+                }
 
-            if (!FludAutoStartService.isConnected()) {
-                if (elapsed >= HELPER_CONNECT_TIMEOUT_MS) {
+                AccessibilityConnectionGate.Decision.TIMEOUT -> {
                     synchronized(lock) {
                         if (expectedGeneration != generation) return
                         clearQueueLocked(discardPayload = true)
@@ -200,30 +206,34 @@ object FludAutoStartCoordinator {
                     return
                 }
 
-                FludAutoStartService.report(
-                    "Waiting for Auto-start helper connection",
-                    "Accessibility is enabled but not live yet; ${payload.label()} remains local and unsent, elapsed=${elapsed / 1000}s"
-                )
-                scheduleCheck(context, expectedGeneration, CHECK_INTERVAL_MS)
-                return
-            }
-
-            val startResult = synchronized(lock) {
-                if (expectedGeneration != generation || queuedPayload != payload || queuedPackage != pkg) return
-                waitingForHelperConnection = false
-                beginFludPreflightLocked(context, pkg, payload, now, false)
-            }
-            if (!startResult.success) {
-                synchronized(lock) {
-                    if (expectedGeneration != generation) return
-                    clearQueueLocked(discardPayload = true)
+                AccessibilityConnectionGate.Decision.WAIT -> {
+                    FludAutoStartService.report(
+                        "Waiting for Auto-start helper connection",
+                        "Accessibility is enabled but not live yet; ${payload.label()} remains local and unsent, elapsed=${elapsed / 1000}s"
+                    )
+                    scheduleCheck(context, expectedGeneration, CHECK_INTERVAL_MS)
+                    return
                 }
-                FludAutoStartService.report("Could not start Flud preflight", startResult.message)
-                BridgePreferences.recordLastCommand(context, "Auto-start: ${startResult.message}", false)
-                return
+
+                AccessibilityConnectionGate.Decision.READY -> {
+                    val startResult = synchronized(lock) {
+                        if (expectedGeneration != generation || queuedPayload != payload || queuedPackage != pkg) return
+                        waitingForHelperConnection = false
+                        beginFludPreflightLocked(context, pkg, payload, now, false)
+                    }
+                    if (!startResult.success) {
+                        synchronized(lock) {
+                            if (expectedGeneration != generation) return
+                            clearQueueLocked(discardPayload = true)
+                        }
+                        FludAutoStartService.report("Could not start Flud preflight", startResult.message)
+                        BridgePreferences.recordLastCommand(context, "Auto-start: ${startResult.message}", false)
+                        return
+                    }
+                    scheduleCheck(context, expectedGeneration, CHECK_INTERVAL_MS)
+                    return
+                }
             }
-            scheduleCheck(context, expectedGeneration, CHECK_INTERVAL_MS)
-            return
         }
 
         val foreground = FludAutoStartService.isFludForeground(pkg)
