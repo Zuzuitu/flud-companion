@@ -1,6 +1,6 @@
 {
   "name": "flud-companion-selfhost-relay",
-  "version": "0.25.1",
+  "version": "0.25.2-rc1",
   "private": true,
   "scripts": {
     "deploy": "wrangler deploy",
