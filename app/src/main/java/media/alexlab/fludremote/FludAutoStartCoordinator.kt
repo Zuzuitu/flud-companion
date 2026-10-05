@@ -16,6 +16,7 @@ import android.os.Looper
  */
 object FludAutoStartCoordinator {
     private const val PREPARE_TIMEOUT_MS = 180_000L
+    private const val HELPER_CONNECT_TIMEOUT_MS = 20_000L
     private const val CHECK_INTERVAL_MS = 400L
     private const val FINAL_VERIFY_MS = 450L
 
@@ -39,6 +40,7 @@ object FludAutoStartCoordinator {
     @Volatile private var queuedPayload: PendingPayload? = null
     @Volatile private var queuedPackage: String? = null
     @Volatile private var queuedAt = 0L
+    @Volatile private var waitingForHelperConnection = false
     @Volatile private var generation = 0L
 
     fun submit(context: Context, magnet: String): FludLauncher.Result {
@@ -64,50 +66,80 @@ object FludAutoStartCoordinator {
             }
 
             val now = System.currentTimeMillis()
-            val foreground = FludAutoStartService.isFludForeground(pkg)
-            val snapshot = if (foreground) FludAutoStartService.torrentListSnapshot(pkg) else null
-            val cold = !(foreground && snapshot?.readyCandidate == true)
 
             generation += 1L
             val myGeneration = generation
             queuedPayload = payload
             queuedPackage = pkg
             queuedAt = now
+            waitingForHelperConnection = !FludAutoStartService.isConnected()
 
-            var openRequested = false
-            if (!foreground) {
-                val opened = FludAutoStartService.openFludForPreflight(context, pkg)
-                if (!opened.success) {
-                    clearQueueLocked(discardPayload = true)
-                    return opened
-                }
-                openRequested = true
+            if (waitingForHelperConnection) {
+                gate.reset(now, cold = true, initialOpenRequested = false)
+                FludAutoStartService.cancel("Waiting for Accessibility helper before ${payload.label()} handoff")
+                FludAutoStartService.report(
+                    "Waiting for Auto-start helper connection",
+                    "Accessibility is enabled in Android settings but the service is not connected; ${payload.label()} is still local and unsent"
+                )
+                scheduleCheck(context, myGeneration, CHECK_INTERVAL_MS)
+                return FludLauncher.Result(
+                    true,
+                    pkg,
+                    "Auto-start helper is reconnecting; ${payload.label()} is held locally until Accessibility is live"
+                )
             }
 
-            gate.reset(now, cold = cold, initialOpenRequested = openRequested)
-            FludAutoStartService.cancel("Preparing Flud before ${payload.label()} handoff")
-            FludAutoStartService.report(
-                if (existing?.sameExplicitRetry(payload) == true) "Retrying Flud preflight" else "Preparing Flud",
-                if (cold) {
-                    "Waiting for torrent-list structure to finish restoring; ${payload.label()} has not been sent"
-                } else {
-                    "Flud is already open; verifying the torrent-list structure before ${payload.label()} handoff"
-                }
-            )
-            scheduleCheck(context, myGeneration, CHECK_INTERVAL_MS)
+            val started = beginFludPreflightLocked(context, pkg, payload, now, existing?.sameExplicitRetry(payload) == true)
+            if (!started.success) {
+                clearQueueLocked(discardPayload = true)
+                return started
+            }
 
-            return FludLauncher.Result(
-                true,
-                pkg,
-                if (existing?.sameExplicitRetry(payload) == true) {
-                    "Pending Auto-start retry refreshed; magnet is still held locally until Flud is structurally ready"
-                } else if (cold) {
-                    "Flud is preparing; ${payload.label()} is held locally until its torrent list stops changing"
-                } else {
-                    "Flud is open; verifying torrent-list stability before Auto-start ${payload.label()} handoff"
-                }
-            )
+            scheduleCheck(context, myGeneration, CHECK_INTERVAL_MS)
+            return started
         }
+    }
+
+    private fun beginFludPreflightLocked(
+        context: Context,
+        pkg: String,
+        payload: PendingPayload,
+        now: Long,
+        explicitRetry: Boolean
+    ): FludLauncher.Result {
+        val foreground = FludAutoStartService.isFludForeground(pkg)
+        val snapshot = if (foreground) FludAutoStartService.torrentListSnapshot(pkg) else null
+        val cold = !(foreground && snapshot?.readyCandidate == true)
+
+        var openRequested = false
+        if (!foreground) {
+            val opened = FludAutoStartService.openFludForPreflight(context, pkg)
+            if (!opened.success) return opened
+            openRequested = true
+        }
+
+        gate.reset(now, cold = cold, initialOpenRequested = openRequested)
+        FludAutoStartService.cancel("Preparing Flud before ${payload.label()} handoff")
+        FludAutoStartService.report(
+            if (explicitRetry) "Retrying Flud preflight" else "Preparing Flud",
+            if (cold) {
+                "Waiting for torrent-list structure to finish restoring; ${payload.label()} has not been sent"
+            } else {
+                "Flud is already open; verifying the torrent-list structure before ${payload.label()} handoff"
+            }
+        )
+
+        return FludLauncher.Result(
+            true,
+            pkg,
+            if (explicitRetry) {
+                "Pending Auto-start retry refreshed; payload is still held locally until Flud is structurally ready"
+            } else if (cold) {
+                "Flud is preparing; ${payload.label()} is held locally until its torrent list stops changing"
+            } else {
+                "Flud is open; verifying torrent-list stability before Auto-start ${payload.label()} handoff"
+            }
+        )
     }
 
     private fun scheduleCheck(context: Context, expectedGeneration: Long, delayMs: Long) {
@@ -137,6 +169,60 @@ object FludAutoStartCoordinator {
                 "No ${payload.label()} was sent because the torrent list never reached a stable structural state"
             )
             BridgePreferences.recordLastCommand(context, "Auto-start: Flud never became structurally ready", false)
+            return
+        }
+
+        if (waitingForHelperConnection) {
+            if (!FludAutoStartService.isEnabled(context)) {
+                synchronized(lock) {
+                    if (expectedGeneration != generation) return
+                    clearQueueLocked(discardPayload = true)
+                }
+                FludAutoStartService.report(
+                    "Auto-start helper was disabled before handoff",
+                    "No ${payload.label()} was sent; retry is safe"
+                )
+                BridgePreferences.recordLastCommand(context, "Auto-start: Accessibility helper disabled before handoff", false)
+                return
+            }
+
+            if (!FludAutoStartService.isConnected()) {
+                if (elapsed >= HELPER_CONNECT_TIMEOUT_MS) {
+                    synchronized(lock) {
+                        if (expectedGeneration != generation) return
+                        clearQueueLocked(discardPayload = true)
+                    }
+                    FludAutoStartService.report(
+                        "Auto-start helper did not reconnect",
+                        "Android still lists Accessibility as enabled, but the service never connected; no ${payload.label()} was sent"
+                    )
+                    BridgePreferences.recordLastCommand(context, "Auto-start: Accessibility helper enabled but not connected", false)
+                    return
+                }
+
+                FludAutoStartService.report(
+                    "Waiting for Auto-start helper connection",
+                    "Accessibility is enabled but not live yet; ${payload.label()} remains local and unsent, elapsed=${elapsed / 1000}s"
+                )
+                scheduleCheck(context, expectedGeneration, CHECK_INTERVAL_MS)
+                return
+            }
+
+            val startResult = synchronized(lock) {
+                if (expectedGeneration != generation || queuedPayload != payload || queuedPackage != pkg) return
+                waitingForHelperConnection = false
+                beginFludPreflightLocked(context, pkg, payload, now, false)
+            }
+            if (!startResult.success) {
+                synchronized(lock) {
+                    if (expectedGeneration != generation) return
+                    clearQueueLocked(discardPayload = true)
+                }
+                FludAutoStartService.report("Could not start Flud preflight", startResult.message)
+                BridgePreferences.recordLastCommand(context, "Auto-start: ${startResult.message}", false)
+                return
+            }
+            scheduleCheck(context, expectedGeneration, CHECK_INTERVAL_MS)
             return
         }
 
@@ -275,6 +361,7 @@ object FludAutoStartCoordinator {
         queuedPayload = null
         queuedPackage = null
         queuedAt = 0L
+        waitingForHelperConnection = false
         generation += 1L
         if (discardPayload && payload is PendingPayload.Torrent) {
             TorrentFileSupport.delete(payload.value)
