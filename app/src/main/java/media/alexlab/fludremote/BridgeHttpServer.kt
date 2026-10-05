@@ -187,6 +187,16 @@ class BridgeHttpServer(
                             return respond(output, 401, json("error" to "Unauthorized"))
                         }
                         val last = BridgePreferences.lastCommand(context)
+                        val boot = BridgePreferences.lastBootStart(context)
+                        val bootObject = if (boot == null) {
+                            JSONObject.NULL
+                        } else {
+                            JSONObject()
+                                .put("atMillis", boot.atMillis)
+                                .put("action", boot.action)
+                                .put("success", boot.success)
+                                .put("detail", boot.detail)
+                        }
                         val lastObject = if (last == null) {
                             JSONObject.NULL
                         } else {
@@ -208,6 +218,7 @@ class BridgeHttpServer(
                             "remoteAutoStartStatus" to FludAutoStartService.status(),
                             "remoteAutoStartStrategy" to FludAutoStartService.strategy(),
                             "remoteAutoStartDiagnostic" to FludAutoStartService.diagnostic(),
+                            "lastBootStart" to bootObject,
                             "lastCommand" to lastObject,
                             "cloudRelayUrl" to BridgePreferences.cloudBaseUrl(context),
                             "cloudDeviceId" to BridgePreferences.cloudDeviceId(context),
