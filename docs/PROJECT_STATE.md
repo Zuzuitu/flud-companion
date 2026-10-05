@@ -1,7 +1,7 @@
 # Flud Companion - Project State
 
 LAST_UPDATED: 2026-10-03
-STATUS: Stable public release 0.25.1. The public release source is the immutable tag `v0.25.1`; `main` may move forward with post-release maintenance and governance changes.
+STATUS: Stable public release 0.25.1. Development candidate `0.25.2-rc1` / versionCode `45` is under hardware validation for reboot-start and Accessibility liveness. `v0.25.1` remains the immutable public stable tag.
 
 This file is the canonical human-readable technical checkpoint for Flud Companion.
 
@@ -38,6 +38,20 @@ Repository truth overrides chat memory. Do not reconstruct current behavior from
 
 The published release tag and GitHub Release assets are part of release integrity. Do not move a published tag, recreate a release, or replace its assets unless the owner explicitly requests a history/release rewrite and the consequences are understood.
 
+
+## 0.25.2-rc1 development candidate
+
+This candidate addresses a real NVIDIA Shield regression observed after reboot:
+
+- Bridge startup now gets a second boot lifecycle opportunity on `USER_UNLOCKED` and performs one bounded verification/retry if the foreground service does not reach RUNNING.
+- Boot startup results are recorded as non-secret diagnostics.
+- Accessibility `enabled in Settings` is no longer treated as proof that the service is actually connected.
+- Auto-start holds the payload locally while an enabled Accessibility helper reconnects and fails safely if the service never becomes live.
+- Flud preflight does not begin while Accessibility is disconnected, preventing the observed failure mode where Flud opened but the magnet was never handed over/confirmed.
+- LAN status exposes helper enabled-vs-connected state; Remote polling advertises `ready` only when the Accessibility service is actually connected.
+- v11 structural torrent-list readiness, pre-handoff recovery, exactly-one handoff and post-handoff boundaries are unchanged.
+
+This is hardware-timing sensitive. Do not publish 0.25.2 stable until the owner validates the full sequence on Shield: reboot -> Bridge online without manual launch -> Auto-start magnet completes.
 
 ## 0.25.1 release scope
 
