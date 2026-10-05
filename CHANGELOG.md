@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.25.2 stable
+- Improved Bridge startup reliability after Android TV reboot.
+- Improved Auto-start helper readiness detection after reboot.
+- Preserved the existing structural readiness and single-handoff safety behavior.
+
 ## 0.25.1 stable
 - Correct Android Bridge version reporting in LAN and Remote status surfaces.
 - Derive Android Bridge reporting from the installed app version to prevent future RC/stable mismatches.

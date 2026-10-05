@@ -68,7 +68,11 @@ class CloudRelayClient(context: Context) {
             .url("$base/bridge/poll/$deviceId")
             .header("Authorization", "Bearer $token")
             .header("X-Flud-Bridge-Version", BRIDGE_VERSION)
-            .header("X-Flud-AutoStart", if (FludAutoStartService.isEnabled(appContext)) "ready" else "off")
+            .header("X-Flud-AutoStart", when {
+                FludAutoStartService.isConnected() -> "ready"
+                FludAutoStartService.isEnabled(appContext) -> "reconnecting"
+                else -> "off"
+            })
             .header("X-Flud-AutoStart-Mode", FludAutoStartService.strategy())
             .get().build()
         try {
@@ -114,16 +118,14 @@ class CloudRelayClient(context: Context) {
         val magnet = command.optString("magnet")
         val autoStart = command.optBoolean("autoStart", false)
         val validMagnet = magnet.startsWith("magnet:?", ignoreCase = true) && magnet.length <= 12_000
-        val helperReady = validMagnet && autoStart && FludAutoStartService.isEnabled(appContext)
+        val helperEnabled = FludAutoStartService.isEnabled(appContext)
         val result = when {
             !validMagnet -> FludLauncher.Result(false, message = "Invalid magnet URI from relay")
-            helperReady -> FludAutoStartCoordinator.submit(appContext, magnet)
+            autoStart && !helperEnabled -> FludLauncher.Result(false, message = "Auto-start helper is not enabled on Android")
+            autoStart -> FludAutoStartCoordinator.submit(appContext, magnet)
             else -> FludLauncher.launchMagnet(appContext, magnet)
         }
-        val resultMessage = if (result.success && autoStart) {
-            if (helperReady) result.message
-            else "${result.message}; auto-start requested but the Flud Companion accessibility helper is not enabled"
-        } else result.message
+        val resultMessage = result.message
         BridgePreferences.recordLastCommand(appContext, "Remote: $resultMessage", result.success)
         postResult(base, deviceId, token, id, result.success, resultMessage, result.packageName)
     }
@@ -156,18 +158,15 @@ class CloudRelayClient(context: Context) {
             return
         }
 
-        val helperReady = autoStart && FludAutoStartService.isEnabled(appContext)
-        val result = if (helperReady) {
-            FludAutoStartCoordinator.submitTorrent(appContext, stored)
-        } else {
-            TorrentFileLauncher.launch(appContext, stored)
+        val helperEnabled = FludAutoStartService.isEnabled(appContext)
+        val result = when {
+            autoStart && !helperEnabled -> FludLauncher.Result(false, message = "Auto-start helper is not enabled on Android")
+            autoStart -> FludAutoStartCoordinator.submitTorrent(appContext, stored)
+            else -> TorrentFileLauncher.launch(appContext, stored)
         }
         if (!result.success) TorrentFileSupport.delete(stored)
 
-        val resultMessage = if (result.success && autoStart) {
-            if (helperReady) result.message
-            else "${result.message}; auto-start requested but the Flud Companion accessibility helper is not enabled"
-        } else result.message
+        val resultMessage = result.message
         BridgePreferences.recordLastCommand(appContext, "Remote torrent: $resultMessage", result.success)
         postResult(base, deviceId, token, id, result.success, resultMessage, result.packageName)
     }

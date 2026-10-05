@@ -15,11 +15,22 @@ object BridgePreferences {
     private const val KEY_CLOUD_BASE_URL = "cloud_base_url"
     private const val KEY_CLOUD_DEVICE_ID = "cloud_device_id"
     private const val KEY_CLOUD_TOKEN = "cloud_token"
+    private const val KEY_LAST_BOOT_AT = "last_boot_at"
+    private const val KEY_LAST_BOOT_ACTION = "last_boot_action"
+    private const val KEY_LAST_BOOT_SUCCESS = "last_boot_success"
+    private const val KEY_LAST_BOOT_DETAIL = "last_boot_detail"
 
     data class LastCommand(
         val atMillis: Long,
         val message: String,
         val success: Boolean
+    )
+
+    data class LastBootStart(
+        val atMillis: Long,
+        val action: String,
+        val success: Boolean,
+        val detail: String
     )
 
     fun token(context: Context): String {
@@ -121,6 +132,28 @@ object BridgePreferences {
             atMillis = at,
             message = message,
             success = prefs.getBoolean(KEY_LAST_COMMAND_SUCCESS, false)
+        )
+    }
+
+    fun recordBootStart(context: Context, action: String, success: Boolean, detail: String) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+            .edit()
+            .putLong(KEY_LAST_BOOT_AT, System.currentTimeMillis())
+            .putString(KEY_LAST_BOOT_ACTION, action)
+            .putBoolean(KEY_LAST_BOOT_SUCCESS, success)
+            .putString(KEY_LAST_BOOT_DETAIL, detail.take(240))
+            .apply()
+    }
+
+    fun lastBootStart(context: Context): LastBootStart? {
+        val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val at = prefs.getLong(KEY_LAST_BOOT_AT, 0L)
+        if (at <= 0L) return null
+        return LastBootStart(
+            atMillis = at,
+            action = prefs.getString(KEY_LAST_BOOT_ACTION, "").orEmpty(),
+            success = prefs.getBoolean(KEY_LAST_BOOT_SUCCESS, false),
+            detail = prefs.getString(KEY_LAST_BOOT_DETAIL, "").orEmpty()
         )
     }
 

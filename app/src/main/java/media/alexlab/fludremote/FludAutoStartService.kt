@@ -82,6 +82,8 @@ class FludAutoStartService : AccessibilityService() {
             if (!packageName.isNullOrBlank()) pendingPackage = packageName
         }
 
+        fun isConnected(): Boolean = activeService != null
+
         fun isEnabled(context: Context): Boolean {
             if (activeService != null) return true
 
@@ -136,6 +138,11 @@ class FludAutoStartService : AccessibilityService() {
         fun status(): String = lastStatus
         fun diagnostic(): String = lastDiagnostic
         fun strategy(): String = STRATEGY
+        fun connectionDiagnostic(context: Context): String = when {
+            activeService != null -> "connected"
+            isEnabled(context) -> "enabled in Android settings, service not connected"
+            else -> "disabled"
+        }
 
         fun report(status: String, diagnostic: String) {
             lastStatus = status

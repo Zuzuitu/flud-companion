@@ -2,6 +2,18 @@
 
 This folder keeps the human-readable notes for Flud Companion public releases.
 
+## 0.25.2 stable
+
+Maintenance release focused on reboot/startup reliability.
+
+Highlights:
+
+- Improved Bridge startup reliability after Android TV reboot.
+- Auto-start readiness now distinguishes an enabled Accessibility setting from a live connected helper.
+- Existing structural readiness, exactly-one-handoff and post-handoff safety behavior are unchanged.
+
+Full notes: [v0.25.2.md](v0.25.2.md)
+
 ## 0.25.1 stable
 
 Small maintenance release for version-reporting consistency.

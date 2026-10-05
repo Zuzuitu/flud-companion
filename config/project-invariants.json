@@ -8,9 +8,9 @@
     "AGENTS.md"
   ],
   "current_release": {
-    "version_name": "0.25.1",
-    "version_code": 44,
-    "tag": "v0.25.1",
+    "version_name": "0.25.2",
+    "version_code": 45,
+    "tag": "v0.25.2",
     "application_id": "media.alexlab.fludremote"
   },
   "hard_invariants": {
@@ -37,7 +37,8 @@
     "accessibility_enabled_detection_must_keep_secure_settings_fallback": true,
     "autostart_reopen_only_before_handoff": true,
     "release_notes_are_concise_user_facing_summaries": true,
-    "remote_torrent_payloads_use_temporary_user_owned_r2_storage": true
+    "remote_torrent_payloads_use_temporary_user_owned_r2_storage": true,
+    "autostart_requires_live_accessibility_connection_before_flud_preflight": true
   },
   "signing": {
     "certificate_sha256": "c0bbc7472b10c74325039bbf83c9bc2f92e3ff869eaf49599ed67cd546bb5998",

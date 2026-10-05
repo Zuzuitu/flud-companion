@@ -1,7 +1,7 @@
 # Flud Companion - Project State
 
-LAST_UPDATED: 2026-10-03
-STATUS: Stable public release 0.25.1. The public release source is the immutable tag `v0.25.1`; `main` may move forward with post-release maintenance and governance changes.
+LAST_UPDATED: 2026-10-05
+STATUS: Stable public release 0.25.2. The public release source is the immutable tag `v0.25.2`; `main` may move forward with post-release maintenance and governance changes.
 
 This file is the canonical human-readable technical checkpoint for Flud Companion.
 
@@ -24,10 +24,10 @@ Repository truth overrides chat memory. Do not reconstruct current behavior from
 
 ## Current public release
 
-- Release: `0.25.1`
-- Tag: `v0.25.1`
-- Android `versionCode`: `44`
-- Android `versionName`: `0.25.1`
+- Release: `0.25.2`
+- Tag: `v0.25.2`
+- Android `versionCode`: `45`
+- Android `versionName`: `0.25.2`
 - Application ID: `media.alexlab.fludremote`
 - Minimum Android SDK: 23
 - Target Android SDK: 33
@@ -38,6 +38,20 @@ Repository truth overrides chat memory. Do not reconstruct current behavior from
 
 The published release tag and GitHub Release assets are part of release integrity. Do not move a published tag, recreate a release, or replace its assets unless the owner explicitly requests a history/release rewrite and the consequences are understood.
 
+
+## 0.25.2 release scope
+
+0.25.2 fixes a real NVIDIA Shield regression observed after reboot:
+
+- Bridge startup now gets a second boot lifecycle opportunity on `USER_UNLOCKED` and performs one bounded verification/retry if the foreground service does not reach RUNNING.
+- Boot startup results are recorded as non-secret diagnostics.
+- Accessibility `enabled in Settings` is no longer treated as proof that the service is actually connected.
+- Auto-start holds the payload locally while an enabled Accessibility helper reconnects and fails safely if the service never becomes live.
+- Flud preflight does not begin while Accessibility is disconnected, preventing the observed failure mode where Flud opened but the magnet was never handed over/confirmed.
+- LAN status exposes helper enabled-vs-connected state; Remote polling advertises `ready` only when the Accessibility service is actually connected.
+- v11 structural torrent-list readiness, pre-handoff recovery, exactly-one handoff and post-handoff boundaries are unchanged.
+
+Hardware validation passed on NVIDIA Shield on 2026-10-05 for the full sequence: reboot -> Bridge online without manual launch -> Auto-start magnet completes.
 
 ## 0.25.1 release scope
 
@@ -190,6 +204,7 @@ With explicit owner authorization, the public history was deep-cleaned again on 
 - `0.24.9`
 - `0.25.0`
 - `0.25.1`
+- `0.25.2`
 
 Each reachable snapshot represents a real public release and is attributed to `Zuzuitu`. Development retries, temporary publishing helpers, intermediate patch commits and bookkeeping noise are intentionally not part of the normal public history.
 
@@ -267,9 +282,21 @@ Decisions and validated outcomes completed after the initial 2026-10-03 checkpoi
 - 0.25.1 replaces those Android Bridge version constants with `BuildConfig.VERSION_NAME`, preventing the same RC/stable mismatch from recurring.
 - This patch intentionally changes only version reporting/version metadata; validated magnet, `.torrent`, relay transport and Auto-start behavior remain unchanged.
 
+## Session checkpoint - 2026-10-05
+
+- A reboot regression was reproduced on NVIDIA Shield: `Start after reboot` remained enabled while the Bridge did not always return online automatically.
+- A second failure boundary was identified: Android Settings could report the Accessibility helper enabled while the service instance was not actually connected.
+- Auto-start now distinguishes enabled-state from live Accessibility connection and will not begin Flud structural preflight until Accessibility is connected.
+- While the helper reconnects, the payload remains local and unsent; if the helper never becomes live, the request fails safely.
+- Boot startup now also reacts to `USER_UNLOCKED`, verifies that BridgeService reaches RUNNING and performs one bounded retry.
+- Boot-start results are recorded only as non-secret diagnostics.
+- The v11 structural readiness algorithm, pre-handoff recovery, exactly-one payload handoff and post-handoff safety boundary are unchanged.
+- `0.25.2-rc1` / versionCode `45` passed CI, permanent signing verification and real NVIDIA Shield validation for reboot -> Bridge online -> Auto-start magnet completion.
+- The validated candidate was promoted to stable `0.25.2` with the same versionCode `45`.
+
 ## Known technical debt
 
-The 0.25.0 release adds hardware-validated `.torrent` file handoff while preserving the structural Auto-start preflight and mobile relay layout fixes from 0.24.9.
+The 0.25.2 release preserves the hardware-validated `.torrent` handoff and structural Auto-start behavior while adding reboot/startup and Accessibility-liveness hardening.
 
 Some older comments inside `FludAutoStartService.kt` still mention earlier strategy generations. Runtime behavior and `STRATEGY` are authoritative; clean stale comments during a future normal source change without changing the validated safety behavior.
 
