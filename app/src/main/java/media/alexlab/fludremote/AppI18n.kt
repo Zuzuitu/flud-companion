@@ -135,6 +135,8 @@ object AppI18n {
         "optional_off" to m("optional / OFF", "opțional / OPRIT", "facultatif / OFF", "optional / AUS"),
         "remote" to m("Remote", "Remote", "Remote", "Remote"),
         "connecting" to m("connecting…", "se conectează…", "connexion…", "Verbindung…"),
+        "helper_attention" to m("needs reconnection", "necesită reconectare", "reconnexion nécessaire", "erneute Verbindung erforderlich"),
+        "reconnect_helper" to m("Reconnect Auto-start helper", "Reconectează helper-ul Auto-start", "Reconnecter l'assistant Auto-start", "Auto-start-Helfer neu verbinden"),
         "configured_disabled" to m("configured / disabled", "configurat / dezactivat", "configuré / désactivé", "konfiguriert / deaktiviert"),
         "not_configured_optional" to m("not configured (optional)", "neconfigurat (opțional)", "non configuré (facultatif)", "nicht konfiguriert (optional)"),
         "bridge" to m("Bridge", "Bridge", "Bridge", "Bridge"),
