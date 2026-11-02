@@ -236,6 +236,21 @@ object FludAutoStartCoordinator {
             }
         }
 
+        // Never mistake an unbound AccessibilityService for Flud leaving
+        // foreground. Reopening Flud would not reconnect the system helper.
+        if (!FludAutoStartService.isConnected()) {
+            synchronized(lock) {
+                if (expectedGeneration != generation) return
+                clearQueueLocked(discardPayload = true)
+            }
+            FludAutoStartService.report(
+                "Accessibility helper disconnected during preflight",
+                "No ${payload.label()} was sent; reconnect the helper before retrying"
+            )
+            BridgePreferences.recordLastCommand(context, "Auto-start: Accessibility disconnected before handoff", false)
+            return
+        }
+
         val foreground = FludAutoStartService.isFludForeground(pkg)
         val snapshot = if (foreground) FludAutoStartService.torrentListSnapshot(pkg) else null
         val decision = gate.observe(
