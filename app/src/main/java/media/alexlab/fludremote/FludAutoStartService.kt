@@ -96,7 +96,7 @@ class FludAutoStartService : AccessibilityService() {
             }
             val now = SystemClock.elapsedRealtime().coerceAtLeast(1L)
             if (disconnectedSinceElapsedMs == 0L) disconnectedSinceElapsedMs = now
-            return now - disconnectedSinceElapsedMs >= UNBOUND_WARNING_MS
+            return AccessibilityBindingStatus.requiresAction(enabled = true, connected = false, elapsedMs = now - disconnectedSinceElapsedMs, graceMs = UNBOUND_WARNING_MS)
         }
 
         private fun globalAccessibilityOn(context: Context): Boolean? = try {
