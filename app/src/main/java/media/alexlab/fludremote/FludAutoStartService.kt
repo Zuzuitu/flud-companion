@@ -10,6 +10,7 @@ import android.graphics.Rect
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.View
 import android.view.accessibility.AccessibilityEvent
@@ -52,6 +53,8 @@ class FludAutoStartService : AccessibilityService() {
         @Volatile private var lastStatus = "Idle"
         @Volatile private var lastDiagnostic = "No auto-start attempt yet"
         @Volatile private var activeService: FludAutoStartService? = null
+        @Volatile private var disconnectedSinceElapsedMs = 0L
+        private const val UNBOUND_WARNING_MS = 15_000L
         @Volatile private var filePickerRecoveries = 0
         @Volatile private var confirmationSeenAt = 0L
         @Volatile private var rehandoffAttempts = 0
@@ -83,6 +86,22 @@ class FludAutoStartService : AccessibilityService() {
         }
 
         fun isConnected(): Boolean = activeService != null
+
+        // The OS owns Accessibility binding; this observes it but never tries
+        // to enable/disable Accessibility through restricted secure settings.
+        fun needsUserReconnect(context: Context): Boolean {
+            if (isConnected() || !isEnabled(context)) {
+                disconnectedSinceElapsedMs = 0L
+                return false
+            }
+            val now = SystemClock.elapsedRealtime().coerceAtLeast(1L)
+            if (disconnectedSinceElapsedMs == 0L) disconnectedSinceElapsedMs = now
+            return now - disconnectedSinceElapsedMs >= UNBOUND_WARNING_MS
+        }
+
+        private fun globalAccessibilityOn(context: Context): Boolean? = try {
+            Settings.Secure.getInt(context.contentResolver, Settings.Secure.ACCESSIBILITY_ENABLED, 0) == 1
+        } catch (_: Exception) { null }
 
         fun isEnabled(context: Context): Boolean {
             if (activeService != null) return true
@@ -140,8 +159,11 @@ class FludAutoStartService : AccessibilityService() {
         fun strategy(): String = STRATEGY
         fun connectionDiagnostic(context: Context): String = when {
             activeService != null -> "connected"
-            isEnabled(context) -> "enabled in Android settings, service not connected"
-            else -> "disabled"
+            !isEnabled(context) -> "disabled in Android Settings"
+            !needsUserReconnect(context) -> "enabled in Settings; waiting for Android to bind the helper"
+            globalAccessibilityOn(context) == false ->
+                "Android Accessibility globally OFF; re-enable Flud Companion Auto-start in TV Settings"
+            else -> "Android did not bind the helper; in TV Settings > Accessibility toggle Flud Companion Auto-start OFF then ON"
         }
 
         fun report(status: String, diagnostic: String) {
@@ -252,11 +274,26 @@ class FludAutoStartService : AccessibilityService() {
     override fun onServiceConnected() {
         super.onServiceConnected()
         activeService = this
+        disconnectedSinceElapsedMs = 0L
         lastStatus = "Ready — guarded semantic confirmation"
+        lastDiagnostic = "AccessibilityService connected by Android"
+    }
+
+    override fun onUnbind(intent: android.content.Intent?): Boolean {
+        if (activeService === this) {
+            activeService = null
+            disconnectedSinceElapsedMs = SystemClock.elapsedRealtime().coerceAtLeast(1L)
+            lastStatus = "Accessibility helper disconnected"
+            lastDiagnostic = "Android unbound AccessibilityService; no payload can be handed off"
+        }
+        return super.onUnbind(intent)
     }
 
     override fun onDestroy() {
-        if (activeService === this) activeService = null
+        if (activeService === this) {
+            activeService = null
+            disconnectedSinceElapsedMs = SystemClock.elapsedRealtime().coerceAtLeast(1L)
+        }
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
     }
