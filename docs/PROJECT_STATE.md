@@ -294,6 +294,21 @@ Decisions and validated outcomes completed after the initial 2026-10-03 checkpoi
 - `0.25.2-rc1` / versionCode `45` passed CI, permanent signing verification and real NVIDIA Shield validation for reboot -> Bridge online -> Auto-start magnet completion.
 - The validated candidate was promoted to stable `0.25.2` with the same versionCode `45`.
 
+## Development candidate - 0.25.3-rc1 (2026-11-02)
+
+The owner reported a new Shield reboot regression with stable 0.25.2: LAN/Remote Bridge came online, but Android Settings listed the Accessibility helper enabled while it remained unconnected. Remote correctly reported Auto-start unavailable. The previously recorded torrent-list timeout is historical, not evidence of live list restoration trouble.
+
+Candidate, **not yet hardware validated**:
+
+- Mark only `FludAutoStartService` `directBootAware` to make early Android system binding possible on supported TV builds; do not access credential-encrypted preferences from its binding callback.
+- Observe `onUnbind` and `onDestroy` so the active-service reference cannot remain stale when the OS disconnects it.
+- Distinguish initial binding from persistent disconnection in the Android UI, and link to the existing Android TV Settings entry point to toggle helper OFF/ON if required.
+- If Accessibility disconnects during an already-running structural preflight, fail safely **before handoff** instead of reopening Flud as though it had disappeared.
+- Do not use `WRITE_SECURE_SETTINGS`, force-enable services, or alter OS security settings. Android controls service binding.
+- Retain stable 0.25.2 until the owner confirms reboot -> helper connected -> magnet accepted automatically on a real NVIDIA Shield.
+
+Read-only ADB diagnostics for a persistent failure: `settings get secure accessibility_enabled`, `settings get secure enabled_accessibility_services`, and `dumpsys accessibility`. Never publish full dumps unredacted.
+
 ## Known technical debt
 
 The 0.25.2 release preserves the hardware-validated `.torrent` handoff and structural Auto-start behavior while adding reboot/startup and Accessibility-liveness hardening.
