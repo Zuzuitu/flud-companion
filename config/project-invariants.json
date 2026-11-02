@@ -83,5 +83,11 @@
     "client_filename_and_size_checks": true,
     "bridge_metainfo_validation": true,
     "remote_payload_storage": "temporary-user-owned-r2"
+  },
+  "development_candidate": {
+    "version_name": "0.25.3-rc1",
+    "version_code": 46,
+    "hardware_validation_required": true,
+    "purpose": "Accessibility binding after NVIDIA Shield reboot; Direct Boot and safe disconnected-helper handling"
   }
 }
