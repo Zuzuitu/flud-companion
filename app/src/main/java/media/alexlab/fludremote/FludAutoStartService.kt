@@ -283,9 +283,13 @@ class FludAutoStartService : AccessibilityService() {
         if (activeService === this) {
             activeService = null
             disconnectedSinceElapsedMs = SystemClock.elapsedRealtime().coerceAtLeast(1L)
-            lastStatus = "Accessibility helper disconnected"
-            lastDiagnostic = "Android unbound AccessibilityService; no payload can be handed off"
+            // A new OS binding must not resume stale post-handoff confirmation gestures.
+            clear(
+                "Accessibility helper disconnected",
+                "Android unbound AccessibilityService; pending confirmation was cancelled"
+            )
         }
+        handler.removeCallbacksAndMessages(null)
         return super.onUnbind(intent)
     }
 
@@ -293,6 +297,10 @@ class FludAutoStartService : AccessibilityService() {
         if (activeService === this) {
             activeService = null
             disconnectedSinceElapsedMs = SystemClock.elapsedRealtime().coerceAtLeast(1L)
+            clear(
+                "Accessibility helper destroyed",
+                "Android destroyed AccessibilityService; pending confirmation was cancelled"
+            )
         }
         handler.removeCallbacksAndMessages(null)
         super.onDestroy()
