@@ -1,7 +1,7 @@
 # Flud Companion - Project State
 
-LAST_UPDATED: 2026-10-05
-STATUS: Stable public release 0.25.2. The public release source is the immutable tag `v0.25.2`; `main` may move forward with post-release maintenance and governance changes.
+LAST_UPDATED: 2026-11-03
+STATUS: Stable public release 0.25.2. Development candidate 0.25.3-rc1 is under review in PR #13, code CI green but permanent-signing verification and NVIDIA Shield reboot acceptance pending. Public tag `v0.25.2` remains immutable.
 
 This file is the canonical human-readable technical checkpoint for Flud Companion.
 
@@ -308,6 +308,20 @@ Candidate, **not yet hardware validated**:
 - Retain stable 0.25.2 until the owner confirms reboot -> helper connected -> magnet accepted automatically on a real NVIDIA Shield.
 
 Read-only ADB diagnostics for a persistent failure: `settings get secure accessibility_enabled`, `settings get secure enabled_accessibility_services`, and `dumpsys accessibility`. Never publish full dumps unredacted.
+
+## Candidate audit addendum - 2026-11-03
+
+The PR #13 candidate still requires real Shield validation. Code audit identified an additional narrow race: during the delayed final fingerprint check the Accessibility service can become unbound; the old final dispatch path did not re-check the live helper before `handoffMagnet` / `handoffTorrent` (whose launch helpers can fall back to the application context). A disconnected helper could therefore leave Flud opened without an Auto-start confirmation.
+
+Candidate hardening added to the same PR branch, **not stable**:
+
+- Pure, unit-tested final gate distinguishes helper disconnection (terminal fail-closed) from changed structural torrent-list readiness (safe pre-handoff retry).
+- Final dispatch checks connection again after the structural fingerprint verification and before the single handoff. Android service lifecycle callbacks and the final dispatch run on the main thread.
+- `onUnbind` / active `onDestroy` cancel any outstanding post-handoff confirmation requests and pending callbacks, preventing stale UI action after OS reconnection. They do **not** attempt an OS settings write or automated privilege change.
+- Android unit tests, Android debug APK build, relay validation, and public source scan all passed at code SHA `6295e5eec10905c85614e4d13bd860fa5099907a`: GitHub Actions Android `41578853972`, relay `41578853908`, source `41578853888`.
+- The debug APK is *not* compatible for in-place installation over the permanently signed stable APK. An RC for hardware testing must first be signed with the unchanged production certificate and the fingerprint verified.
+- Open questions: whether the Shield OS binds Accessibility after reboot without intervention; whether `directBootAware` changes the observed behavior on this firmware; any remaining enabled-but-unbound system condition. These cannot be answered by unit tests alone.
+- Do not merge PR #13 or publish 0.25.3 stable until permanent signing and a repeatable reboot -> Bridge RUNNING -> Accessibility CONNECTED -> one confirmed magnet are verified on real hardware.
 
 ## Known technical debt
 
