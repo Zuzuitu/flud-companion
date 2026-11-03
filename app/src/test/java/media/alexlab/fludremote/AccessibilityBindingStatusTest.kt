@@ -20,4 +20,43 @@ class AccessibilityBindingStatusTest {
     @Test fun persistentMissingBindingRequiresUserAttention() {
         assertTrue(AccessibilityBindingStatus.requiresAction(true, false, 15000, 15000))
     }
+
+    @Test fun finalGateFailsClosedWhenHelperDisconnectsEvenWithStableFlud() {
+        assertTrue(
+            AccessibilityBindingStatus.finalGate(
+                connected = false, foreground = true,
+                readyCandidate = true, signatureMatches = true
+            ) == AccessibilityBindingStatus.FinalGate.DISCONNECTED
+        )
+    }
+
+    @Test fun finalGateNeverDispatchesUnstableOrChangedList() {
+        assertTrue(
+            AccessibilityBindingStatus.finalGate(
+                connected = true, foreground = true,
+                readyCandidate = false, signatureMatches = true
+            ) == AccessibilityBindingStatus.FinalGate.NOT_READY
+        )
+        assertTrue(
+            AccessibilityBindingStatus.finalGate(
+                connected = true, foreground = true,
+                readyCandidate = true, signatureMatches = false
+            ) == AccessibilityBindingStatus.FinalGate.NOT_READY
+        )
+        assertTrue(
+            AccessibilityBindingStatus.finalGate(
+                connected = true, foreground = false,
+                readyCandidate = true, signatureMatches = true
+            ) == AccessibilityBindingStatus.FinalGate.NOT_READY
+        )
+    }
+
+    @Test fun finalGatePermitsHandoffOnlyWithLiveHelperAndMatchingReadyFlud() {
+        assertTrue(
+            AccessibilityBindingStatus.finalGate(
+                connected = true, foreground = true,
+                readyCandidate = true, signatureMatches = true
+            ) == AccessibilityBindingStatus.FinalGate.READY
+        )
+    }
 }
