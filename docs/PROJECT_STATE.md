@@ -1,7 +1,7 @@
 # Flud Companion - Project State
 
 LAST_UPDATED: 2026-11-05
-STATUS: 0.25.3 promoted to stable release source after permanent-signing verification and owner-reported NVIDIA Shield reboot/Auto-start acceptance. The release workflow must verify and publish the signed APK before public availability is confirmed. Tag `v0.25.2` remains immutable.
+STATUS: Stable public release 0.25.3 (versionCode 46) published on 2026-11-05. Signed APK, SHA-256 and release notes are publicly available under immutable tag `v0.25.3`; previous releases and assets are preserved. NVIDIA Shield reboot/Auto-start acceptance was confirmed by the owner.
 
 This file is the canonical human-readable technical checkpoint for Flud Companion.
 
@@ -357,4 +357,5 @@ Verify all of the following:
 
 - Owner approved public 0.25.3 following successful NVIDIA Shield restart and Auto-start testing.
 - Promote versionName 0.25.3, versionCode 46, changelog and release metadata, retaining permanent signing identity.
-- An explicitly version-limited, one-shot GitHub Actions workflow publishes only after tests, source scan and signer verification. Remove this temporary workflow after successful publication.
+- The version-limited GitHub Actions publisher passed tests, source scan, version check and permanent signer verification; public release v0.25.3 was created at commit 44dbf87734366ad60eccf01dd700e3ea1b35ed5b and its APK SHA-256 is f0ac5dff7e043c1046d0110439e89ea6696e06bf492dec9cc96d961dfc1dd9fb.
+- One-shot publication workflow removed after successful release, retaining the five canonical durable workflows.
