@@ -2,6 +2,12 @@
 
 This folder keeps the human-readable notes for Flud Companion public releases.
 
+## 0.25.3 stable
+
+Android TV Accessibility helper reliability and fail-safe handoff improvements.
+
+Full notes: [v0.25.3.md](v0.25.3.md)
+
 ## 0.25.2 stable
 
 Maintenance release focused on reboot/startup reliability.

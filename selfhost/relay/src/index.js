@@ -1,4 +1,4 @@
-const VERSION = "0.25.3-rc1-selfhost";
+const VERSION = "0.25.3-selfhost";
 const ONLINE_WINDOW_MS = 25_000;
 const LAST_SEEN_WRITE_INTERVAL_MS = 8_000;
 const COMMAND_MAX_AGE_MS = 10 * 60 * 1000;

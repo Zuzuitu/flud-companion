@@ -2,11 +2,11 @@
 
 **Remote control for Flud from iPhone, Android, tablet or desktop - including Flud running on Android TV / NVIDIA Shield.**
 
-[![Latest release](https://img.shields.io/badge/release-v0.25.2-blue)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.25.2)
-[![Android](https://img.shields.io/badge/Android-6%2B-brightgreen)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.25.2)
+[![Latest release](https://img.shields.io/badge/release-v0.25.3-blue)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.25.3)
+[![Android](https://img.shields.io/badge/Android-6%2B-brightgreen)](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.25.3)
 [![License](https://img.shields.io/badge/license-Apache--2.0-lightgrey)](LICENSE)
 
-**[Download the signed Android APK](https://github.com/Zuzuitu/flud-companion/releases/download/v0.25.2/FludCompanion-0.25.2.apk)** · [0.25.2 release notes](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.25.2) · [Quick start](docs/quick-start.md) · [Changelog](CHANGELOG.md)
+**[Download the signed Android APK](https://github.com/Zuzuitu/flud-companion/releases/download/v0.25.3/FludCompanion-0.25.3.apk)** · [0.25.3 release notes](https://github.com/Zuzuitu/flud-companion/releases/tag/v0.25.3) · [Quick start](docs/quick-start.md) · [Changelog](CHANGELOG.md)
 
 Flud Companion adds a browser-based remote interface to **Flud / Flud+**. Install the small Android Bridge on the device that runs Flud, then control it from **iPhone, Android, tablet or desktop** over your home LAN or remotely over the internet.
 
@@ -35,17 +35,18 @@ No Tailscale or project-owned cloud account is required for Remote mode. Each us
   </tr>
 </table>
 
-## Current release - 0.25.2
+## Current release - 0.25.3
 
-0.25.2 improves Bridge startup reliability after Android TV reboot and makes Auto-start readiness depend on a live Accessibility connection.
+0.25.3 improves Auto-start reliability when Android TV leaves Accessibility enabled but the helper is not connected after reboot; it also prevents unsafe handoff if the helper disconnects during preparation.
 
 ### What's new
 
-- Improved Bridge startup reliability after reboot.
-- Improved Auto-start helper readiness detection after reboot.
-- Existing magnet, `.torrent` and structural Auto-start safety behavior is preserved.
+- Improved Accessibility helper binding handling after Android TV / NVIDIA Shield reboot.
+- Clear reconnection guidance when Auto-start is enabled but not connected.
+- Safer magnet and `.torrent` handling if Accessibility disconnects before handoff.
+- Existing LAN/Remote and guarded single-handoff behavior are preserved.
 
-See the [0.25.2 notes](docs/releases/v0.25.2.md), [release history](docs/releases/README.md) and full [CHANGELOG](CHANGELOG.md).
+See the [0.25.3 notes](docs/releases/v0.25.3.md), [release history](docs/releases/README.md) and full [CHANGELOG](CHANGELOG.md).
 
 ### Quick setup
 

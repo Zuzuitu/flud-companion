@@ -1,7 +1,7 @@
 # Flud Companion - Project State
 
-LAST_UPDATED: 2026-11-03
-STATUS: Stable public release 0.25.2. Development candidate 0.25.3-rc1 is under review in PR #13, code CI green but permanent-signing verification and NVIDIA Shield reboot acceptance pending. Public tag `v0.25.2` remains immutable.
+LAST_UPDATED: 2026-11-05
+STATUS: 0.25.3 promoted to stable release source after permanent-signing verification and owner-reported NVIDIA Shield reboot/Auto-start acceptance. The release workflow must verify and publish the signed APK before public availability is confirmed. Tag `v0.25.2` remains immutable.
 
 This file is the canonical human-readable technical checkpoint for Flud Companion.
 
@@ -24,10 +24,10 @@ Repository truth overrides chat memory. Do not reconstruct current behavior from
 
 ## Current public release
 
-- Release: `0.25.2`
-- Tag: `v0.25.2`
-- Android `versionCode`: `45`
-- Android `versionName`: `0.25.2`
+- Release: `0.25.3`
+- Tag: `v0.25.3`
+- Android `versionCode`: `46`
+- Android `versionName`: `0.25.3`
 - Application ID: `media.alexlab.fludremote`
 - Minimum Android SDK: 23
 - Target Android SDK: 33
@@ -38,6 +38,15 @@ Repository truth overrides chat memory. Do not reconstruct current behavior from
 
 The published release tag and GitHub Release assets are part of release integrity. Do not move a published tag, recreate a release, or replace its assets unless the owner explicitly requests a history/release rewrite and the consequences are understood.
 
+
+## 0.25.3 release scope
+
+- Promotes PR #13 after owner-reported successful NVIDIA Shield reboot/Auto-start validation on 2026-11-05.
+- Accessibility becomes direct-boot-aware, clears stale unbound references and shows actionable reconnection guidance.
+- Disconnects during Flud preflight or immediate handoff fail closed, preserving the at-most-one handoff boundary.
+- LAN/Remote transports, structural readiness and permanent release signing remain unchanged.
+- Signed RC identity passed GitHub Actions run 41580711075 at SHA f87cb2ffa9e4ee90c639c24dd93a04dd0debd9c1.
+- Stable artifact must independently pass release signing checks on merged source before publishing.
 
 ## 0.25.2 release scope
 
@@ -343,3 +352,9 @@ Verify all of the following:
 - release notes and `CHANGELOG.md` describe validated user-facing behavior concisely and do not expose unnecessary internal failed-attempt history;
 - this checkpoint is updated after material architectural, release, security, or workflow changes.
 
+
+## Session checkpoint - 2026-11-05 (0.25.3 promotion)
+
+- Owner approved public 0.25.3 following successful NVIDIA Shield restart and Auto-start testing.
+- Promote versionName 0.25.3, versionCode 46, changelog and release metadata, retaining permanent signing identity.
+- An explicitly version-limited, one-shot GitHub Actions workflow publishes only after tests, source scan and signer verification. Remove this temporary workflow after successful publication.

@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.25.3 stable
+- Improve Android TV Accessibility helper binding and diagnostics after reboot.
+- Explain when Auto-start is enabled but its helper is disconnected.
+- Fail safely if Accessibility disconnects during Flud preflight or before final handoff.
+- Preserve LAN/Remote functionality, structural readiness and exactly-one handoff.
+
 ## 0.25.2 stable
 - Improved Bridge startup reliability after Android TV reboot.
 - Improved Auto-start helper readiness detection after reboot.
