@@ -15,8 +15,8 @@ android {
         applicationId = "media.alexlab.fludremote"
         minSdk = 23
         targetSdk = 33
-        versionCode = 45
-        versionName = "0.25.2"
+        versionCode = 46
+        versionName = "0.25.3"
     }
 
     buildTypes {

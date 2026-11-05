@@ -831,6 +831,7 @@ class MainActivity : Activity() {
             append("\n${tr("auto_helper")}: ")
             append(when {
                 remoteAutoStartReady -> tr("ready")
+                helperEnabled && FludAutoStartService.needsUserReconnect(this@MainActivity) -> tr("helper_attention")
                 helperEnabled -> tr("connecting")
                 else -> tr("optional_off")
             })
@@ -856,10 +857,14 @@ class MainActivity : Activity() {
         autoStartButton.text = if (autoStart) tr("disable_auto_start") else tr("enable_auto_start")
         remoteAutoStartView.text = when {
             remoteAutoStartReady -> "${tr("auto_helper")}: ${tr("ready")} — ${FludAutoStartService.status()}"
-            helperEnabled -> "${tr("auto_helper")}: ${tr("connecting")} — ${FludAutoStartService.connectionDiagnostic(this)}"
+            helperEnabled -> "${tr("auto_helper")}: ${if (FludAutoStartService.needsUserReconnect(this)) tr("helper_attention") else tr("connecting")} — ${FludAutoStartService.connectionDiagnostic(this)}"
             else -> tr("helper_off_desc")
         }
-        remoteAutoStartButton.text = if (remoteAutoStartReady) tr("helper_settings_ready") else tr("enable_helper")
+        remoteAutoStartButton.text = when {
+            remoteAutoStartReady -> tr("helper_settings_ready")
+            helperEnabled && FludAutoStartService.needsUserReconnect(this) -> tr("reconnect_helper")
+            else -> tr("enable_helper")
+        }
         cloudButton.text = if (cloudEnabled) tr("disable_remote_relay") else tr("enable_remote_relay")
         cloudView.text = "${tr("remote_relay")}: ${if (!cloudEnabled) tr("off") else cloud.state.name} — ${cloud.detail}"
 

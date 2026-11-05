@@ -38,6 +38,24 @@ Current clients reuse a request ID during transport retries. The relay treats a 
 
 The helper uses guarded semantic matching first. `Right → Right → OK` is a delayed compatibility fallback; it is intentionally not used immediately because Flud's main Add button can open the `.torrent` file picker.
 
+## Auto-start is enabled but never connects after Android TV reboot
+
+If LAN / Remote is online but the Bridge reports **Auto-start helper: needs reconnection**, Android still lists the service as enabled but the app has not received a live AccessibilityService connection. An enabled toggle is not proof that the helper can confirm a magnet.
+
+1. Confirm the Bridge itself is online and open the Android TV **Settings > Accessibility > Flud Companion Auto-start** page.
+2. If the helper remains unbound, toggle it **OFF then ON** as a diagnostic/recovery action. A release candidate is **not** considered reboot-fixed if this manual step is required after every restart.
+3. Retry with a new magnet only after the helper reports connected. A previous pre-handoff failure did not send a payload; do not blindly retry a command that may already have reached Flud.
+
+For read-only ADB diagnostics on an affected Android TV device, run these separately and redact output before sharing:
+
+```sh
+adb shell settings get secure accessibility_enabled
+adb shell settings get secure enabled_accessibility_services
+adb shell dumpsys accessibility
+```
+
+The last command can expose other installed services and device information; share only the relevant, sanitized Flud Companion binding lines. The Bridge never force-enables Accessibility or writes Android's protected secure settings.
+
 ## Auto-start opened a file picker
 
 The guarded helper detects the torrent file picker, backs out once and continues waiting for the magnet-confirmation screen. If the behavior persists, disable Auto-start and report the Android/Flud version without sharing any live tokens or QR codes.

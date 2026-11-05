@@ -1,7 +1,7 @@
 # Flud Companion - Project State
 
-LAST_UPDATED: 2026-10-05
-STATUS: Stable public release 0.25.2. The public release source is the immutable tag `v0.25.2`; `main` may move forward with post-release maintenance and governance changes.
+LAST_UPDATED: 2026-11-05
+STATUS: 0.25.3 promoted to stable release source after permanent-signing verification and owner-reported NVIDIA Shield reboot/Auto-start acceptance. The release workflow must verify and publish the signed APK before public availability is confirmed. Tag `v0.25.2` remains immutable.
 
 This file is the canonical human-readable technical checkpoint for Flud Companion.
 
@@ -24,10 +24,10 @@ Repository truth overrides chat memory. Do not reconstruct current behavior from
 
 ## Current public release
 
-- Release: `0.25.2`
-- Tag: `v0.25.2`
-- Android `versionCode`: `45`
-- Android `versionName`: `0.25.2`
+- Release: `0.25.3`
+- Tag: `v0.25.3`
+- Android `versionCode`: `46`
+- Android `versionName`: `0.25.3`
 - Application ID: `media.alexlab.fludremote`
 - Minimum Android SDK: 23
 - Target Android SDK: 33
@@ -38,6 +38,15 @@ Repository truth overrides chat memory. Do not reconstruct current behavior from
 
 The published release tag and GitHub Release assets are part of release integrity. Do not move a published tag, recreate a release, or replace its assets unless the owner explicitly requests a history/release rewrite and the consequences are understood.
 
+
+## 0.25.3 release scope
+
+- Promotes PR #13 after owner-reported successful NVIDIA Shield reboot/Auto-start validation on 2026-11-05.
+- Accessibility becomes direct-boot-aware, clears stale unbound references and shows actionable reconnection guidance.
+- Disconnects during Flud preflight or immediate handoff fail closed, preserving the at-most-one handoff boundary.
+- LAN/Remote transports, structural readiness and permanent release signing remain unchanged.
+- Signed RC identity passed GitHub Actions run 41580711075 at SHA f87cb2ffa9e4ee90c639c24dd93a04dd0debd9c1.
+- Stable artifact must independently pass release signing checks on merged source before publishing.
 
 ## 0.25.2 release scope
 
@@ -294,6 +303,35 @@ Decisions and validated outcomes completed after the initial 2026-10-03 checkpoi
 - `0.25.2-rc1` / versionCode `45` passed CI, permanent signing verification and real NVIDIA Shield validation for reboot -> Bridge online -> Auto-start magnet completion.
 - The validated candidate was promoted to stable `0.25.2` with the same versionCode `45`.
 
+## Development candidate - 0.25.3-rc1 (2026-11-02)
+
+The owner reported a new Shield reboot regression with stable 0.25.2: LAN/Remote Bridge came online, but Android Settings listed the Accessibility helper enabled while it remained unconnected. Remote correctly reported Auto-start unavailable. The previously recorded torrent-list timeout is historical, not evidence of live list restoration trouble.
+
+Candidate, **not yet hardware validated**:
+
+- Mark only `FludAutoStartService` `directBootAware` to make early Android system binding possible on supported TV builds; do not access credential-encrypted preferences from its binding callback.
+- Observe `onUnbind` and `onDestroy` so the active-service reference cannot remain stale when the OS disconnects it.
+- Distinguish initial binding from persistent disconnection in the Android UI, and link to the existing Android TV Settings entry point to toggle helper OFF/ON if required.
+- If Accessibility disconnects during an already-running structural preflight, fail safely **before handoff** instead of reopening Flud as though it had disappeared.
+- Do not use `WRITE_SECURE_SETTINGS`, force-enable services, or alter OS security settings. Android controls service binding.
+- Retain stable 0.25.2 until the owner confirms reboot -> helper connected -> magnet accepted automatically on a real NVIDIA Shield.
+
+Read-only ADB diagnostics for a persistent failure: `settings get secure accessibility_enabled`, `settings get secure enabled_accessibility_services`, and `dumpsys accessibility`. Never publish full dumps unredacted.
+
+## Candidate audit addendum - 2026-11-03
+
+The PR #13 candidate still requires real Shield validation. Code audit identified an additional narrow race: during the delayed final fingerprint check the Accessibility service can become unbound; the old final dispatch path did not re-check the live helper before `handoffMagnet` / `handoffTorrent` (whose launch helpers can fall back to the application context). A disconnected helper could therefore leave Flud opened without an Auto-start confirmation.
+
+Candidate hardening added to the same PR branch, **not stable**:
+
+- Pure, unit-tested final gate distinguishes helper disconnection (terminal fail-closed) from changed structural torrent-list readiness (safe pre-handoff retry).
+- Final dispatch checks connection again after the structural fingerprint verification and before the single handoff. Android service lifecycle callbacks and the final dispatch run on the main thread.
+- `onUnbind` / active `onDestroy` cancel any outstanding post-handoff confirmation requests and pending callbacks, preventing stale UI action after OS reconnection. They do **not** attempt an OS settings write or automated privilege change.
+- Android unit tests, Android debug APK build, relay validation, and public source scan all passed at code SHA `6295e5eec10905c85614e4d13bd860fa5099907a`: GitHub Actions Android `41578853972`, relay `41578853908`, source `41578853888`.
+- The debug APK is *not* compatible for in-place installation over the permanently signed stable APK. An RC for hardware testing must first be signed with the unchanged production certificate and the fingerprint verified.
+- Open questions: whether the Shield OS binds Accessibility after reboot without intervention; whether `directBootAware` changes the observed behavior on this firmware; any remaining enabled-but-unbound system condition. These cannot be answered by unit tests alone.
+- Do not merge PR #13 or publish 0.25.3 stable until permanent signing and a repeatable reboot -> Bridge RUNNING -> Accessibility CONNECTED -> one confirmed magnet are verified on real hardware.
+
 ## Known technical debt
 
 The 0.25.2 release preserves the hardware-validated `.torrent` handoff and structural Auto-start behavior while adding reboot/startup and Accessibility-liveness hardening.
@@ -314,3 +352,9 @@ Verify all of the following:
 - release notes and `CHANGELOG.md` describe validated user-facing behavior concisely and do not expose unnecessary internal failed-attempt history;
 - this checkpoint is updated after material architectural, release, security, or workflow changes.
 
+
+## Session checkpoint - 2026-11-05 (0.25.3 promotion)
+
+- Owner approved public 0.25.3 following successful NVIDIA Shield restart and Auto-start testing.
+- Promote versionName 0.25.3, versionCode 46, changelog and release metadata, retaining permanent signing identity.
+- An explicitly version-limited, one-shot GitHub Actions workflow publishes only after tests, source scan and signer verification. Remove this temporary workflow after successful publication.

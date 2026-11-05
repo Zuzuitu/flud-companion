@@ -236,6 +236,21 @@ object FludAutoStartCoordinator {
             }
         }
 
+        // Never mistake an unbound AccessibilityService for Flud leaving
+        // foreground. Reopening Flud would not reconnect the system helper.
+        if (!FludAutoStartService.isConnected()) {
+            synchronized(lock) {
+                if (expectedGeneration != generation) return
+                clearQueueLocked(discardPayload = true)
+            }
+            FludAutoStartService.report(
+                "Accessibility helper disconnected during preflight",
+                "No ${payload.label()} was sent; reconnect the helper before retrying"
+            )
+            BridgePreferences.recordLastCommand(context, "Auto-start: Accessibility disconnected before handoff", false)
+            return
+        }
+
         val foreground = FludAutoStartService.isFludForeground(pkg)
         val snapshot = if (foreground) FludAutoStartService.torrentListSnapshot(pkg) else null
         val decision = gate.observe(
@@ -321,19 +336,52 @@ object FludAutoStartCoordinator {
 
         val foreground = FludAutoStartService.isFludForeground(pkg)
         val snapshot = if (foreground) FludAutoStartService.torrentListSnapshot(pkg) else null
-        if (!foreground || snapshot?.readyCandidate != true || snapshot.signature != expectedSignature) {
-            gate.invalidate()
-            FludAutoStartService.report(
-                "Flud changed during final readiness check",
-                "Preflight was reset before handoff; ${payload.label()} is still local and unsent"
-            )
-            scheduleCheck(context, expectedGeneration, CHECK_INTERVAL_MS)
-            return
+        when (AccessibilityBindingStatus.finalGate(
+            connected = FludAutoStartService.isConnected(),
+            foreground = foreground,
+            readyCandidate = snapshot?.readyCandidate == true,
+            signatureMatches = snapshot?.signature == expectedSignature
+        )) {
+            AccessibilityBindingStatus.FinalGate.DISCONNECTED -> {
+                synchronized(lock) {
+                    if (expectedGeneration != generation || queuedPayload != payload || queuedPackage != pkg) return
+                    clearQueueLocked(discardPayload = true)
+                }
+                FludAutoStartService.report(
+                    "Accessibility helper disconnected before final handoff",
+                    "No ${payload.label()} was sent; reconnect Accessibility before retrying"
+                )
+                BridgePreferences.recordLastCommand(context, "Auto-start: Accessibility disconnected before final handoff", false)
+                return
+            }
+            AccessibilityBindingStatus.FinalGate.NOT_READY -> {
+                gate.invalidate()
+                FludAutoStartService.report(
+                    "Flud changed during final readiness check",
+                    "Preflight was reset before handoff; ${payload.label()} is still local and unsent"
+                )
+                scheduleCheck(context, expectedGeneration, CHECK_INTERVAL_MS)
+                return
+            }
+            AccessibilityBindingStatus.FinalGate.READY -> Unit
         }
 
-        synchronized(lock) {
+        // Final atomic barrier before intent dispatch. Accessibility callbacks and this
+        // verification run on Android's main thread, so onUnbind cannot interleave
+        // between this check and the synchronous handoff below.
+        val helperStillConnected = synchronized(lock) {
             if (expectedGeneration != generation || queuedPayload != payload || queuedPackage != pkg) return
-            clearQueueLocked()
+            val connected = FludAutoStartService.isConnected()
+            clearQueueLocked(discardPayload = !connected)
+            connected
+        }
+        if (!helperStillConnected) {
+            FludAutoStartService.report(
+                "Accessibility helper disconnected at handoff",
+                "No ${payload.label()} was sent; reconnect Accessibility before retrying"
+            )
+            BridgePreferences.recordLastCommand(context, "Auto-start: Accessibility disconnected at handoff", false)
+            return
         }
 
         val result = dispatchNow(context, pkg, payload, "stable torrent-list fingerprint verified twice")
