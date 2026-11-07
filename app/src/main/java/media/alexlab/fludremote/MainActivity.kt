@@ -284,13 +284,13 @@ class MainActivity : Activity() {
         val advancedButtons = listOf(
             button(tr("enable_bg")) { requestOverlayPermission() },
             button(tr("open_flud")) { val result = FludLauncher.openApp(this); toast(result.message) },
-            button(tr("copy_bridge_url")) {
-                val ip = NetworkUtils.localIpv4()
-                if (ip.isNullOrBlank()) {
-                    toast(tr("bridge_address_unavailable"))
+            button(tr("copy_remote_bridge_url")) {
+                val url = BridgePreferences.cloudBaseUrl(this)
+                if (!validRelayUrl(url)) {
+                    toast(tr("relay_config_first"))
                 } else {
-                    copyText("Flud Companion Bridge URL", "http://$ip:${BridgeService.PORT}")
-                    toast(tr("bridge_url_copied"))
+                    copyText("Flud Companion remote relay URL", url)
+                    toast(tr("remote_bridge_url_copied"))
                 }
             },
             button(tr("copy_lan")) { copyText("Flud Companion LAN token", BridgePreferences.token(this)); toast(tr("copy_lan")) },
